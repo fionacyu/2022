@@ -64,7 +64,8 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
     
         # getting the updated cs after breaking edges
         edges_to_remove = [x for x in system if x in edges_of_interest or x[::-1] in edges_of_interest]
-        subsystem_edge_list = [x for x in system if x not in edges_to_remove]
+        # subsystem_edge_list = [x for x in system if x not in edges_to_remove]
+        subsystem_edge_list = list(set(system) - set(edges_to_remove))
         # print('subsystem_edge_list', subsystem_edge_list)
         subsystem_node_list = set(chain(*system))
         # print(subsystem_node_list)
@@ -116,7 +117,8 @@ def hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edg
             edgeList = donorDict[donor].edges + acceptorDict[acceptor].edges + connectionDict[connection].simple_paths
             # print('edgeList: ', edgeList)
             rejected_edges = [e for e in edgeList if e in influential_edges or e[::-1] in influential_edges]
-            edgeList = [e for e in edgeList if e not in rejected_edges] # remove influential edges/ edges to cut
+            # edgeList = [e for e in edgeList if e not in rejected_edges] # remove influential edges/ edges to cut
+            edgeList = list(set(edgeList) - set(rejected_edges))
             da_graph.add_nodes_from(nodeList)
             da_graph.add_edges_from(edgeList)
 
@@ -149,7 +151,7 @@ def hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edg
             # print('connection_penalty', connection_penalty)
             penalty += connection_penalty
     
-    return penalty
+    return round(penalty,4)
 
 
 def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list, boxDict):
@@ -170,7 +172,8 @@ def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list, boxDict):
         nonbe_cycle_ind_list = list(dict.fromkeys(nonbe_cycle_ind_list)) # get the unique values
         be_cycle_ind_list = miscellaneous.flatten([miscellaneous.index_of_cycle_list(aromaticDict[asys].cycle_list, edge) for edge in bedgeList])
         be_cycle_ind_list = list(dict.fromkeys(be_cycle_ind_list))
-        nonbe_cycle_ind_list = [x for x in nonbe_cycle_ind_list if x not in be_cycle_ind_list]
+        # nonbe_cycle_ind_list = [x for x in nonbe_cycle_ind_list if x not in be_cycle_ind_list]
+        nonbe_cycle_ind_list = list(set(nonbe_cycle_ind_list) - set(be_cycle_ind_list))
 
         # inc_penalty = aromaticDict[asys].size - (sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList))
         inc_penalty = sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList)

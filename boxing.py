@@ -57,7 +57,8 @@ def classify_nodes(graph, coordinates, boxDict): # updates boxDict by removing a
         filledBoxes.append(boxLabel)
     
     filledBoxes = list(dict.fromkeys(filledBoxes))
-    emptyBoxes = [x for x in boxDict if x not in filledBoxes]
+    # emptyBoxes = [x for x in boxDict if x not in filledBoxes]
+    emptyBoxes = list(set(boxDict) - set(filledBoxes))
     for box in emptyBoxes:
         boxDict.pop(box)
 

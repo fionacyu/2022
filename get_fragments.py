@@ -32,38 +32,42 @@ else:
 # construct graph of molecule 
 G = nx.Graph()
 G, conjugated_edges = graph_characterisation.main(G, atoms, coordinates, nodeList)
+print('graph_characterisation.main(')
 G, boxDict = boxing.box_classification(coordinates, G) # d parameter goes at the end of this function
+print('boxing.box_classification')
 cycleDict = rings.edgeList_dictionary(G)
+print('defining rings ')
 cycleDict = boxing.classify_cycles(G, cycleDict)
+print('ring classification boxes')
 aromaticDict = aromaticity.classify_aromatic_systems(G, conjugated_edges, coordinates, cycleDict, boxDict)
-
+print('aromaticity classification', aromaticDict)
 donorDict, acceptorDict, connectionDict = hyperconj.classify_donor_acceptor_connections(G, conjugated_edges, boxDict)
-
+print('hyerpconjugation classification')
 
 
 # defining boxes
 donorDict, acceptorDict, aromaticDict = boxing.all_classification(G, donorDict, acceptorDict, cycleDict, aromaticDict) 
-
+print('boxing classification of donorDict, acceptorDict, aromaticDict')
 
 
 
 print('conjugated_edges', conjugated_edges)
 # print('conjugated nodes', set(chain(*conjugated_edges[0])))
 
-for edge in G.edges(data=True):
-    print(edge)
+# for edge in G.edges(data=True):
+#     print(edge)
 
-# print('blah', [x for x in G.edges])
+# # print('blah', [x for x in G.edges])
 
-for node in list(G.nodes):
-    print(node, G.nodes[node])
+# for node in list(G.nodes):
+#     print(node, G.nodes[node])
 
 nonHedges = [e for e in G.edges if G.nodes[e[0]]['element'] != 'H' and G.nodes[e[1]]['element'] != 'H']
 np.random.RandomState(100)
 binaryList = np.random.randint(2,size=len(nonHedges))
 
 edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
-print(edges_to_cut_list)
+# print(edges_to_cut_list)
 
 
 # print('minimum_cycle_basis', [c for c in rings.minimum_cycle_basis(G)])

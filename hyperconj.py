@@ -90,6 +90,7 @@ def donor_acceptor_status_conj_nodes(graph, conjugated_edges):
         donor.add_electrons_dictionary([x for x in sg.nodes()], [graph.nodes[x]['pi'] for x in sg.nodes()])
         # donor.add_electrons(sum([graph.nodes[x]['pi'] for x in sg.nodes()]))
         # donorList.append(donor)
+        donor.add_boxLabels(list(dict.fromkeys([graph.nodes[y]['box'] for y in [x for x in set(chain(*conj_system))]])))
         donorDict['d%d' % i] = donor
 
         acceptor = Acceptor('a%d' % i)
@@ -97,6 +98,7 @@ def donor_acceptor_status_conj_nodes(graph, conjugated_edges):
         acceptor.add_edges(conj_system)
         acceptor.add_terminal_nodes(terminal_nodes)
         acceptor.add_classification('pi')
+        acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[y]['box'] for y in [x for x in set(chain(*conj_system))]])))
         # acceptorList.append(acceptor)                               
         acceptorDict['a%d' % i] = acceptor
 
@@ -119,6 +121,7 @@ def donor_acceptor_status_nonconj_nodes(graph, conjugated_edges):
                 donor.add_terminal_nodes([node])
                 donor.add_electrons_dictionary([node], [2])
                 donor.add_classification('pi')
+                donor.add_boxLabels([graph.nodes[node]['box']])
                 donorDict['d%d' % dcount] = donor
                 dcount += 1
                 
@@ -127,6 +130,7 @@ def donor_acceptor_status_nonconj_nodes(graph, conjugated_edges):
                 acceptor.add_nodes([node])
                 acceptor.add_terminal_nodes([node])
                 acceptor.add_classification('pi')
+                acceptor.add_boxLabels([graph.nodes[node]['box']])
                 acceptorDict['a%d' % acount] = acceptor
                 acount += 1
                 
@@ -138,6 +142,7 @@ def donor_acceptor_status_nonconj_nodes(graph, conjugated_edges):
                 donor.add_terminal_nodes([node])
                 donor.add_electrons_dictionary([node], [2])
                 donor.add_classification('pi')
+                donor.add_boxLabels([graph.nodes[node]['box']])
                 donorDict['d%d' % dcount] = donor
                 dcount += 1
                 
@@ -149,6 +154,7 @@ def donor_acceptor_status_nonconj_nodes(graph, conjugated_edges):
                 donor.add_terminal_nodes([node])
                 donor.add_electrons_dictionary([node], [2])
                 donor.add_classification('pi')
+                donor.add_boxLabels([graph.nodes[node]['box']])
                 donorDict['d%d' % dcount] = donor
                 dcount += 1
                 
@@ -177,6 +183,7 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
                 donor.add_terminal_nodes([x for x in edge])
                 donor.add_electrons_dictionary([x for x in edge], [1,1])
                 donor.add_classification('sigma')
+                donor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
                 donorDict['d%d' % dcount] = donor
                 dcount += 1
                 
@@ -186,6 +193,7 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
                 acceptor.add_edges([edge])
                 acceptor.add_terminal_nodes([x for x in edge])
                 acceptor.add_classification('sigma')
+                acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
                 acceptorDict['a%d' % acount] = acceptor
                 acount +=1 
 
@@ -198,6 +206,7 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
                 donor.add_terminal_nodes([x for x in edge])
                 donor.add_electrons_dictionary([x for x in edge], [1,1])
                 donor.add_classification('pi')
+                donor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
                 donorDict['d%d' % dcount] = donor
                 dcount += 1
 
@@ -206,6 +215,7 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
                 acceptor.add_edges([edge])
                 acceptor.add_terminal_nodes([x for x in edge])
                 acceptor.add_classification('pi')
+                acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
                 acceptorDict['a%d' % acount] = acceptor
                 acount += 1
         
@@ -216,6 +226,7 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
             acceptor.add_edges([edge])
             acceptor.add_terminal_nodes([x for x in edge])
             acceptor.add_classification('sigma')
+            acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
             acceptorDict['a%d' % acount] = acceptor
             acount += 1
 
@@ -227,6 +238,7 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
                 acceptor.add_edges([edge])
                 acceptor.add_terminal_nodes([x for x in edge])
                 acceptor.add_classification('pi')
+                acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
                 acceptorDict['a%d' % acount] = acceptor
                 acount += 1
     
@@ -238,10 +250,14 @@ def donor_acceptor_connections(graph, donorDict, acceptorDict, boxDict):
     # print('acceptor: ', [k for k, _ in acceptorDict.items()])
 
     da_comb_list = list(product([donorDict[k].name for k, _ in donorDict.items()], [acceptorDict[k].name for k, _ in acceptorDict.items()])) # need to remove ones which are the same
-    # print('da_comb_list', da_comb_list)
+    print('     da_comb_list', len(da_comb_list))#, da_comb_list)
     rejected_combinations = [x for x in da_comb_list if donorDict[x[0]].nodes == acceptorDict[x[1]].nodes and donorDict[x[0]].edges == acceptorDict[x[1]].edges and donorDict[x[0]].terminal_nodes == acceptorDict[x[1]].terminal_nodes] + [x for x in da_comb_list if donorDict[x[0]].classification == acceptorDict[x[1]].classification]
-    da_comb_list = [x for x in da_comb_list if x not in rejected_combinations] # removes donors and acceptor pairings which correspond to the same group and donor acceptor pairings of the same classification (sigma or pi)
+    print('     rejected comb', len(rejected_combinations))
+    # da_comb_list = [x for x in da_comb_list if x not in rejected_combinations] # removes donors and acceptor pairings which correspond to the same group and donor acceptor pairings of the same classification (sigma or pi)
+    da_comb_list = list(set(da_comb_list) - set(rejected_combinations))
+    print('     removing rejected combinartions', len(da_comb_list))
     da_comb_list = [x for x in da_comb_list if boxing.adjacent_status_da(donorDict[x[0]].boxLabelList, acceptorDict[x[1]].boxLabelList, boxDict)] # the boxes that donor and acceptors belong in are neighbours
+    print('     da connections boxing', len(da_comb_list))
     # print('da_comb_list', da_comb_list)
 
     # count = 0 
@@ -281,16 +297,19 @@ def classify_donor_acceptor_connections(graph, conjugated_edges, boxDict):
     donorDict, acceptorDict = {}, {}
 
     dlist, alist = donor_acceptor_status_conj_nodes(graph, conjugated_edges)
+    print('da status conj systems')
     donorDict.update(dlist)
     acceptorDict.update(alist)
     del dlist, alist
 
     dlist, alist, dcount, acount = donor_acceptor_status_nonconj_nodes(graph, conjugated_edges)
+    print('da status nonconj nodes')
     donorDict.update(dlist)
     acceptorDict.update(alist)
     del dlist, alist
 
     dlist, alist = donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount, acount)
+    print('da status nonconj edges')
     donorDict.update(dlist)
     acceptorDict.update(alist)
     del dlist, alist

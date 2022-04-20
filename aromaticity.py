@@ -80,14 +80,15 @@ def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict, boxDict):
                     norm_vector = np.cross(uv, uw)
                     norm_vector = 1/np.linalg.norm(norm_vector) * norm_vector # normalising the normal vector 
 
-                    other_nodes = [x for x in cycles if x not in [cycles[idx[0]], cycles[idx[1]], cycles[idx[2]]]]
+                    # other_nodes = [x for x in cycles if x not in [cycles[idx[0]], cycles[idx[1]], cycles[idx[2]]]]
+                    other_nodes = list(set(cycles) - set([cycles[idx[0]], cycles[idx[1]], cycles[idx[2]]]))
                     # print('other_nodes', other_nodes)
 
                     deviationList = []
                     for other_atoms in other_nodes:
                         deviation = np.linalg.norm(np.dot(norm_vector, np.array(coordinates[other_atoms - 1]) - u))
                         deviationList.append(deviation)
-
+                    print('deviationList', deviationList)
                     # check if planar, threshold here is 0.5 A
                     if all(x < 0.5 for x in deviationList):
                         # print('hello')
@@ -99,6 +100,7 @@ def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict, boxDict):
 
 def classify_aromatic_systems(graph, conjugated_edges, coordinates, cycleDict, boxDict):
     small_aromatic_cycles = check_aromaticity(graph, conjugated_edges, coordinates, cycleDict, boxDict)
+    # print('small_aromatic_cycles', small_aromatic_cycles)
     edgeList = miscellaneous.flatten(small_aromatic_cycles)
     nodeList = [x for x in set(chain(*miscellaneous.flatten(small_aromatic_cycles)))]
 
@@ -117,7 +119,8 @@ def classify_aromatic_systems(graph, conjugated_edges, coordinates, cycleDict, b
         bedgeList = [e for e in sg.edges() if sum([e in x for x in small_aromatic_cycles]) >= 2]
         cycleList = [asys for asys in small_aromatic_cycles if len(set(bedgeList).intersection(asys)) > 0]
         intersectionList = [list(set(bedgeList).intersection(asys)) for asys in small_aromatic_cycles]
-        nonbe_cycleList = [[x for x in cycle if x not in intersectionList[i]] for i, cycle in enumerate(cycleList)]
+        # nonbe_cycleList = [[x for x in cycle if x not in intersectionList[i]] for i, cycle in enumerate(cycleList)]
+        nonbe_cycleList = [list(set(cycle) - set(intersectionList[i])) for i, cycle in enumerate(cycleList)]
 
         aromaticsys.add_cycle(cycleList)
         aromaticsys.add_bridging_edges(bedgeList)

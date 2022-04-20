@@ -71,7 +71,8 @@ def _min_cycle_basis(comp, weight):
     # *minimum* spanning tree. That is why we call the next function with
     # weight=None. Depending on implementation, it may be faster as well
     spanning_tree_edges = list(nx.minimum_spanning_edges(comp, weight=None, data=False))
-    edges_excl = [frozenset(e) for e in comp.edges() if e not in spanning_tree_edges]
+    # edges_excl = [frozenset(e) for e in comp.edges() if e not in spanning_tree_edges]
+    edges_excl = [frozenset(e) for e in list(set(comp.edges()) - set(spanning_tree_edges))]
     N = len(edges_excl)
 
     # We maintain a set of vectors orthogonal to sofar found cycles

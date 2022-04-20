@@ -231,7 +231,8 @@ def update_graph_pi(graph): # adds the no. of pi electrons (participating in con
                 # need to check for the fact that the atom is connected to other pi systems not part of the conjugated system or separate conjugated systems
                 edgeList = get_edges_of_node(n, [x for x in graph.edges if graph[x[0]][x[1]]['bo'] >= 2]) #edges the node is part of which is double bond or triple
                 reject_edges = [x for x in edgeList if x in conjugated_edges[j] or x[::-1] in conjugated_edges[j]] 
-                edgeList = [x for x in edgeList if x not in reject_edges] # non conjugated edges the node is bonded to
+                # edgeList = [x for x in edgeList if x not in reject_edges] # non conjugated edges the node is bonded to
+                edgeList = list(set(edgeList) - set(reject_edges))
                 # print('edgeList', edgeList)
 
                 bo_diff_list = [graph[x[0]][x[1]]['bo'] - 1 for x in edgeList] # minus 1 because one bond will be sigma bond (we want the pi bond)
