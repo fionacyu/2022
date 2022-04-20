@@ -121,8 +121,8 @@ def neighbouring_boxes(boxLabelList, boxDict):
     neighboxList = [x for x in neighboxList if x in boxDict]
     return neighboxList
 
-def adjacent_status_da(donorBoxLabelList, acceptorBoxLabelList):
-    donorBoxesNeigh = neighbouring_boxes(donorBoxLabelList)
+def adjacent_status_da(donorBoxLabelList, acceptorBoxLabelList, boxDict):
+    donorBoxesNeigh = neighbouring_boxes(donorBoxLabelList, boxDict)
     if len(set(donorBoxesNeigh).intersection(acceptorBoxLabelList)) > 0:
         return True
     else:

@@ -35,10 +35,12 @@ def hybridisation_penalty(graph, edges_to_cut_list): # fix this
 
 
 def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
-    try:
-        edges_of_interest = [e for e in edges_to_cut_list if graph[e[0]][e[1]]['conjugated'] == 'yes']
+    # try:
+    edges_of_interest = [e for e in edges_to_cut_list if graph[e[0]][e[1]]['conjugated'] == 'yes']
     # print('edges_of_interest', edges_of_interest)
-    except KeyError:
+    # except KeyError:
+    #     return 0
+    if len(edges_of_interest) == 0:
         return 0
 
     # list of lists containing the conjugated systems that will be disturbed or broken from the breaking of edges (will have repeats)
@@ -91,6 +93,9 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
 
 
 def hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edges_to_cut_list, boxDict):
+    if len(connectionDict) == 0:
+        return 0
+    
     penalty = 0
     for connection in connectionDict:
         donor = connection[0]
@@ -148,6 +153,9 @@ def hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edg
 
 
 def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list, boxDict):
+    if len(aromaticDict) == 0:
+        return 0
+
     penalty = 0 
     for asys in aromaticDict:
         #box edges go here
@@ -176,6 +184,8 @@ def ring_strain(size):
     return strain.real
 
 def ring_penalty(graph, cycleDict, edges_to_cut_list, boxDict):
+    if len(cycleDict) == 0:
+        return 0
     # box edges go here, get the edges that would only be near cycles
     boxLabelList = list(dict.fromkeys(miscellaneous.flatten([cycleDict[x].boxLabelList for x in cycleDict])))
     neighBoxes = boxing.neighbouring_boxes(boxLabelList, boxDict)
@@ -188,8 +198,9 @@ def ring_penalty(graph, cycleDict, edges_to_cut_list, boxDict):
 
 def volume_penalty(graph, edges_to_cut_list, proxMatrix, refRad):
     refVol = 4/3 * math.pi * refRad**3
-    graph.remove_edges_from(edges_to_cut_list)
-    connectedComp = (graph.subgraph(x) for x in nx.connected_components(graph))
+    tgraph = graph.copy() 
+    tgraph.remove_edges_from(edges_to_cut_list)
+    connectedComp = (tgraph.subgraph(x) for x in nx.connected_components(tgraph))
     penalty = 0 
     for sg in connectedComp:
         penalty += (refVol - load_data.get_volume(sg, proxMatrix))**2

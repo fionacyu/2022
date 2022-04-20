@@ -1,5 +1,5 @@
-import rings
 import load_data
+import miscellaneous
 import math
 import numpy as np 
 import networkx as nx
@@ -159,9 +159,10 @@ def conjugate_region(graph): # returns set of nodes(atoms) whose electrons are c
             for comb in list(combList):
                 # print('comb', comb)
                 boList = [graph[node][comb[0]]['bo'], graph[node][comb[1]]['bo']]
+                elemList = [graph.nodes[comb[0]]['element'], graph.nodes[comb[1]]['element']]
                 # print('boList', boList)
 
-                if boList[0] >=2 and boList[1] >= 2: # problem here
+                if boList[0] >=2 and boList[1] >= 2 and elemList[0] == 'C' and elemList[1] == 'C': # problem here
                     # print('problemmm')
                     problematic_nodes.append(node)
 
@@ -189,22 +190,30 @@ def conjugate_region(graph): # returns set of nodes(atoms) whose electrons are c
             if len(problematic_nodes) >= 2:
                 paircombinations = combinations(problematic_nodes, 2)
                 for pair in paircombinations:
+                    # print('pair', pair)
                     nonpair_pnodes = [x for x in problematic_nodes if x != pair[0] and x != pair[1]]
                     pair_path = list(nx.all_simple_paths(sg, source=pair[0], target=pair[1]))
+                    pair_path = sorted(pair_path, key=len)
+                    # print('pair_path', pair_path)
                     pnode_in_pairpath = [x for x in nonpair_pnodes if x in pair_path[0]]
                     if not pnode_in_pairpath and len(pair_path[0]) > 2:
                         conjugated_edges.append([list(x) for x in map(nx.utils.pairwise, pair_path)][0])
                         conjugated_nodes.append(pair_path[0])
 
-    for conj_path in conjugated_edges:
-        for edge in conj_path:
-            # print(edge)
-            # print(graph[edge[0]][edge[1]])
-            graph[edge[0]][edge[1]]['conjugated'] = 'yes'
-    return conjugated_nodes, conjugated_edges # conjugated edges returned will be mutually exclusive, that is, no edge in one list in conjugated_edges will appear in another list in conjugated_edges
+    # for conj_path in conjugated_edges:
+    #     for edge in conj_path:
+    #         # print(edge)
+    #         # print(graph[edge[0]][edge[1]])
+    #         graph[edge[0]][edge[1]]['conjugated'] = 'yes'
+    for e in [x for x in graph.edges]:
+        if e in miscellaneous.flatten(conjugated_edges):
+            graph[e[0]][e[1]]['conjugated'] = 'yes'
+        else:
+            graph[e[0]][e[1]]['conjugated'] = 'no'
+    return conjugated_nodes, conjugated_edges, graph # conjugated edges returned will be mutually exclusive, that is, no edge in one list in conjugated_edges will appear in another list in conjugated_edges
 
 def update_graph_pi(graph): # adds the no. of pi electrons (participating in conjugation) to each node
-    conjugated_nodes, conjugated_edges = conjugate_region(graph)
+    conjugated_nodes, conjugated_edges, graph = conjugate_region(graph)
     # print('conjugated_nodes', conjugated_nodes)
     # print('conjugated_edges', conjugated_edges)
     for j, connections in enumerate(conjugated_nodes): 
@@ -238,104 +247,6 @@ def update_graph_pi(graph): # adds the no. of pi electrons (participating in con
     
     return graph, conjugated_nodes, conjugated_edges
 
-
-# def find_all_cycles(G, source=None, cycle_length_limit=None):
-#     # returns list of lists where each list contains the nodes in a cycle, each adjacent node has an edge between them 
-#     # taken from https://gist.github.com/joe-jordan/6548029
-#     """forked from networkx dfs_edges function. Assumes nodes are integers, or at least
-#     types which work with min() and > ."""
-#     if source is None:
-#         # produce edges for all components
-#         nodes=[list(i)[0] for i in nx.connected_components(G)]
-#     else:
-#         # produce edges for components with source
-#         nodes=[source]
-#     # extra variables for cycle detection:
-#     cycle_stack = []
-#     output_cycles = set()
-    
-#     def get_hashable_cycle(cycle):
-#         """cycle as a tuple in a deterministic order."""
-#         m = min(cycle)
-#         mi = cycle.index(m)
-#         mi_plus_1 = mi + 1 if mi < len(cycle) - 1 else 0
-#         if cycle[mi-1] > cycle[mi_plus_1]:
-#             result = cycle[mi:] + cycle[:mi]
-#         else:
-#             result = list(reversed(cycle[:mi_plus_1])) + list(reversed(cycle[mi_plus_1:]))
-#         return tuple(result)
-    
-#     for start in nodes:
-#         if start in cycle_stack:
-#             continue
-#         cycle_stack.append(start)
-        
-#         stack = [(start,iter(G[start]))]
-#         while stack:
-#             _,children = stack[-1]
-#             try:
-#                 child = next(children)
-                
-#                 if child not in cycle_stack:
-#                     cycle_stack.append(child)
-#                     stack.append((child,iter(G[child])))
-#                 else:
-#                     i = cycle_stack.index(child)
-#                     if i < len(cycle_stack) - 2: 
-#                       output_cycles.add(get_hashable_cycle(cycle_stack[i:]))
-                
-#             except StopIteration:
-#                 stack.pop()
-#                 cycle_stack.pop()
-    
-#     return [list(i) for i in output_cycles]
-
-
-# def update_edge_rings(graph, cycle_edge_list):
-#     for edge_list in cycle_edge_list:
-#         # print(edge_list)
-#         ring_size = len(edge_list)
-#         for i, edge in enumerate(edge_list):
-#             # print(edge)
-#             # if i == len(edge_list) - 1:
-#             #     if 'ring' not in graph[edge_list[0]][edge_list[i]]:
-#             #         graph[edge_list[0]][edge_list[i]]['ring'] = [ring_size]
-#             #     elif 'ring' in graph[edge_list[0]][edge_list[i]]:
-#             #         graph[edge_list[0]][edge_list[i]]['ring'].append(ring_size)
-#             if 'ring' not in graph[edge[0]][edge[1]]:
-#                 graph[edge[0]][edge[1]]['ring'] = [ring_size]
-#             elif 'ring' in graph[edge[0]][edge[1]]:
-#                 graph[edge[0]][edge[1]]['ring'].append(ring_size)
-    
-#     return graph
-
-
-# def get_branching(graph): # considers alkane branching/protobranching, updates the node attribute of the graph with no. of protobranches
-#     nodeList = [x for x in list(graph.nodes) if graph.nodes[x]['element'] == 'C' and graph.nodes[x]['ed'] == 4]
-#     # print('***')
-#     # print(nodeList)
-
-#     for node in nodeList:
-#         dfsList = list(nx.dfs_edges(graph, source=node, depth_limit=2))
-#         # print(dfsList)
-#         dfsList = [x[1] for x in dfsList if x[0] != node and x[1] != node and graph.nodes[x[1]]['element'] == 'C' and graph.nodes[x[1]]['ed'] == 4] # contains the nodes of other carbonds which are 2 bonds away 
-#         # print(dfsList)
-#         graph.nodes[node]['protobranches'] = len(dfsList)
-    
-#     return graph     
-
-
-
-# def update_edge_aromaticity(graph, aromatic_edges):
-#     for edge_list in aromatic_edges:
-#         for edge in edge_list:
-#             if 'aromatic' not in graph[edge[0]][edge[1]]:
-#                 graph[edge[0]][edge[1]]['aromatic'] = 1
-#             elif 'aromatic' in graph[edge[0]][edge[1]]:
-#                 graph[edge[0]][edge[1]]['aromatic'] += 1
-#     # the aromatic score assigned to each edge tells us how many aromatic systems the edge is part of
-#     # therefore if you break an edge which is part of two aromatic systems, the penalty will be higher 
-#     return graph
 
 def main(graph, atoms, coordinates, nodeList):
     graph.add_nodes_from(nodeList)

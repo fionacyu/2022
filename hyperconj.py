@@ -232,7 +232,7 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
     
     return donorDict, acceptorDict
 
-def donor_acceptor_connections(graph, donorDict, acceptorDict):
+def donor_acceptor_connections(graph, donorDict, acceptorDict, boxDict):
     connectionDict = {}
     # print('donor: ', [k for k, _ in donorDict.items()])
     # print('acceptor: ', [k for k, _ in acceptorDict.items()])
@@ -241,7 +241,7 @@ def donor_acceptor_connections(graph, donorDict, acceptorDict):
     # print('da_comb_list', da_comb_list)
     rejected_combinations = [x for x in da_comb_list if donorDict[x[0]].nodes == acceptorDict[x[1]].nodes and donorDict[x[0]].edges == acceptorDict[x[1]].edges and donorDict[x[0]].terminal_nodes == acceptorDict[x[1]].terminal_nodes] + [x for x in da_comb_list if donorDict[x[0]].classification == acceptorDict[x[1]].classification]
     da_comb_list = [x for x in da_comb_list if x not in rejected_combinations] # removes donors and acceptor pairings which correspond to the same group and donor acceptor pairings of the same classification (sigma or pi)
-    da_comb_list = [x for x in da_comb_list if boxing.adjacent_status_da(donorDict[x[0]].boxLabelList, acceptorDict[x[1]].boxLabelList)] # the boxes that donor and acceptors belong in are neighbours
+    da_comb_list = [x for x in da_comb_list if boxing.adjacent_status_da(donorDict[x[0]].boxLabelList, acceptorDict[x[1]].boxLabelList, boxDict)] # the boxes that donor and acceptors belong in are neighbours
     # print('da_comb_list', da_comb_list)
 
     # count = 0 
@@ -277,7 +277,7 @@ def donor_acceptor_connections(graph, donorDict, acceptorDict):
     return connectionDict
             
 
-def classify_donor_acceptor_connections(graph, conjugated_edges):
+def classify_donor_acceptor_connections(graph, conjugated_edges, boxDict):
     donorDict, acceptorDict = {}, {}
 
     dlist, alist = donor_acceptor_status_conj_nodes(graph, conjugated_edges)
@@ -295,6 +295,6 @@ def classify_donor_acceptor_connections(graph, conjugated_edges):
     acceptorDict.update(alist)
     del dlist, alist
 
-    connectionDict = donor_acceptor_connections(graph, donorDict, acceptorDict)
+    connectionDict = donor_acceptor_connections(graph, donorDict, acceptorDict, boxDict)
 
     return donorDict, acceptorDict, connectionDict

@@ -8,6 +8,7 @@ import boxing
 import argparse
 import networkx as nx
 from itertools import chain
+import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--xyz', required=True) # provide xyz file
@@ -22,22 +23,21 @@ if args.charges:
 else:
     atoms, coordinates, nodeList = load_data.read_xyz(xyzFile)
 
-edges_to_cut = input("edges to cut (separated by space, e.g. 2,1 15,16 ...): ")
-edges_to_cut_list = edges_to_cut.split()
-# print(edges_to_cut_list)
-edges_to_cut_list = [(int(x.split(',')[0]), int(x.split(',')[1])) for x in edges_to_cut_list]
+# edges_to_cut = input("edges to cut (separated by space, e.g. 2,1 15,16 ...): ")
+# edges_to_cut_list = edges_to_cut.split()
+# # print(edges_to_cut_list)
+# edges_to_cut_list = [(int(x.split(',')[0]), int(x.split(',')[1])) for x in edges_to_cut_list]
 # print(edges_to_cut_list)
 
 # construct graph of molecule 
 G = nx.Graph()
 G, conjugated_edges = graph_characterisation.main(G, atoms, coordinates, nodeList)
 G, boxDict = boxing.box_classification(coordinates, G) # d parameter goes at the end of this function
-
 cycleDict = rings.edgeList_dictionary(G)
 cycleDict = boxing.classify_cycles(G, cycleDict)
 aromaticDict = aromaticity.classify_aromatic_systems(G, conjugated_edges, coordinates, cycleDict, boxDict)
 
-donorDict, acceptorDict, connectionDict = hyperconj.classify_donor_acceptor_connections(G, conjugated_edges)
+donorDict, acceptorDict, connectionDict = hyperconj.classify_donor_acceptor_connections(G, conjugated_edges, boxDict)
 
 
 
@@ -58,6 +58,12 @@ for edge in G.edges(data=True):
 for node in list(G.nodes):
     print(node, G.nodes[node])
 
+nonHedges = [e for e in G.edges if G.nodes[e[0]]['element'] != 'H' and G.nodes[e[1]]['element'] != 'H']
+np.random.RandomState(100)
+binaryList = np.random.randint(2,size=len(nonHedges))
+
+edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
+print(edges_to_cut_list)
 
 
 # print('minimum_cycle_basis', [c for c in rings.minimum_cycle_basis(G)])
