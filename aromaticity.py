@@ -88,7 +88,7 @@ def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict, boxDict):
                     for other_atoms in other_nodes:
                         deviation = np.linalg.norm(np.dot(norm_vector, np.array(coordinates[other_atoms - 1]) - u))
                         deviationList.append(deviation)
-                    print('deviationList', deviationList)
+                    # print('deviationList', deviationList)
                     # check if planar, threshold here is 0.5 A
                     if all(x < 0.5 for x in deviationList):
                         # print('hello')

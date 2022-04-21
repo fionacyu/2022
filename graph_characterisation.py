@@ -6,7 +6,7 @@ import networkx as nx
 from itertools import combinations
 from itertools import chain
 from itertools import product
-
+import time
 
 def hybridisation2(graph, proxMatrix, tol=0.003):
     # returns the edge attributes
@@ -60,7 +60,8 @@ def hybridisation2(graph, proxMatrix, tol=0.003):
                     bondElec = bondElec + 2 * weightDict[bt]
                     bondED = bondED + 1
                     
-                    if (nodeNumber, j+1) not in edgeAttr and (j+1, nodeNumber) not in edgeAttr:
+                    # if (nodeNumber, j+1) not in edgeAttr and (j+1, nodeNumber) not in edgeAttr:
+                    if len(set([(nodeNumber, j+1), (j+1, nodeNumber)]).intersection(edgeAttr)) == 0:
                         edgeAttr[(nodeNumber, j+1)] = {'bo': weightDict[bt]}
                     break
                 elif (bt == 'single' and bondVector[j] < min) or (bt == 'single' and bondVector[j] > max): #no covalent bond exists between atom1 and atom2
@@ -253,12 +254,23 @@ def main(graph, atoms, coordinates, nodeList):
     graph.add_nodes_from(nodeList)
 
     # distance matrix
-    matrix = load_data.proxMat(atoms, coordinates)
+    t1 = time.process_time()
+    # matrix = load_data.proxMat(atoms, coordinates)
+    matrix = load_data.EDM(np.array(coordinates), np.array(coordinates))
+    print('     proximity matrix time: ', time.process_time() - t1)
 
     # updating graph 
+    t2 = time.process_time()
     graph = hybridisation2(graph, matrix) # adds electron domain as node attribute, adds edges (bond order as attribute)
+    print('     hybridisation2 time: ', time.process_time() - t2)
+
+    t3 = time.process_time()
     graph = check_hybrid(graph) # double checks the electron domains of oxygens and nitrogens in tricky cases (e.g. furan, pyrrole and formamide)
+    print('     check hybridisation time: ', time.process_time() - t3)
+
+    t4 = time.process_time()
     graph, _, conjugated_edges = update_graph_pi(graph) # adds pi electrons (participating in conjugation) as node attribute, retrieves the edges involved in a conjugated system
+    print('     update graph pi time: ', time.process_time() - t4)
     # cycle_edge_list = rings.minimum_cycle_basis(graph) # list of lists
     # print('cycle_edge_list', cycle_edge_list)
     # print('cycle_edge_list', cycle_edge_list)

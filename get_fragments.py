@@ -7,8 +7,11 @@ import rings
 import boxing
 import argparse
 import networkx as nx
-from itertools import chain
 import numpy as np
+import time
+import multiprocessing as mp
+
+mp.set_start_method('fork')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--xyz', required=True) # provide xyz file
@@ -17,12 +20,16 @@ args = parser.parse_args()
 xyzFile = args.xyz
 
 # if charge file is supplied
+
+t1 = time.process_time()
+
 if args.charges:
     chargeFile = args.charges
     atoms, coordinates, nodeList = load_data.read_xyz(xyzFile, chargeFile)
 else:
     atoms, coordinates, nodeList = load_data.read_xyz(xyzFile)
 
+# print(coordinates)
 # edges_to_cut = input("edges to cut (separated by space, e.g. 2,1 15,16 ...): ")
 # edges_to_cut_list = edges_to_cut.split()
 # # print(edges_to_cut_list)
@@ -30,27 +37,36 @@ else:
 # print(edges_to_cut_list)
 
 # construct graph of molecule 
+t1 = time.process_time()
 G = nx.Graph()
 G, conjugated_edges = graph_characterisation.main(G, atoms, coordinates, nodeList)
-print('graph_characterisation.main(')
+print('graph_characterisation time: ', time.process_time() - t1)
+
+t2 = time.process_time()
 G, boxDict = boxing.box_classification(coordinates, G) # d parameter goes at the end of this function
-print('boxing.box_classification')
+print('boxing.box_classification time: ', time.process_time() - t2)
+
+t3 = time.process_time()
 cycleDict = rings.edgeList_dictionary(G)
-print('defining rings ')
+print('defining rings time: ', time.process_time() - t3)
+
+t4 = time.process_time()
 cycleDict = boxing.classify_cycles(G, cycleDict)
-print('ring classification boxes')
+print('ring classification boxes time: ', time.process_time() - t4)
+
+t5 = time.process_time()
 aromaticDict = aromaticity.classify_aromatic_systems(G, conjugated_edges, coordinates, cycleDict, boxDict)
-print('aromaticity classification', aromaticDict)
+print('aromaticity classification time: ', time.process_time() - t5)
+
+t6 = time.process_time()
 donorDict, acceptorDict, connectionDict = hyperconj.classify_donor_acceptor_connections(G, conjugated_edges, boxDict)
-print('hyerpconjugation classification')
+print('hyerpconjugation classification time: ', time.process_time() - t6)
 
 
 # defining boxes
+t7 = time.process_time()
 donorDict, acceptorDict, aromaticDict = boxing.all_classification(G, donorDict, acceptorDict, cycleDict, aromaticDict) 
-print('boxing classification of donorDict, acceptorDict, aromaticDict')
-
-
-
+print('boxing classification of donorDict, acceptorDict, aromaticDict time: ', time.process_time() - t7)
 print('conjugated_edges', conjugated_edges)
 # print('conjugated nodes', set(chain(*conjugated_edges[0])))
 
@@ -71,7 +87,7 @@ edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
 
 
 # print('minimum_cycle_basis', [c for c in rings.minimum_cycle_basis(G)])
-
+t = time.process_time()
 # penalty
 conj_penalty = calculate_penalty.conjugation_penalty(G, [x for x in edges_to_cut_list], conjugated_edges)
 print('conj_penalty', conj_penalty)
@@ -117,3 +133,7 @@ print('aromatic_penalty', aromatic_penalty)
 
 ring_penalty = calculate_penalty.ring_penalty(G, cycleDict, edges_to_cut_list, boxDict)
 print('ring_penalty', ring_penalty)
+elapsed_time = time.process_time() - t
+print('penalty time: ', elapsed_time)
+final_time = time.process_time() - t1
+print('total time: ', final_time)

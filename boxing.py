@@ -114,17 +114,26 @@ def neighbouring_boxes(boxLabelList, boxDict):
         neighbours = [label + x for x in binList]
         neighbourList.extend(neighbours)
     
-    neighboxList = neighbourList + npboxLabels
+    neighboxList = np.array(neighbourList) #+ npboxLabels
+    neighboxList = list(np.unique(neighboxList, axis=0))
+    # neighboxList = list(set(neighbourList))
+    # neighboxList = list(dict.fromkeys(neighboxList)) # get the unique values
     neighboxList = [tuple(x) for x in neighboxList]
-    neighboxList = list(dict.fromkeys(neighboxList)) # get the unique values
     # print('neighboxList', neighboxList)
     # print('boxes: ', [box for box in boxDict])
-    neighboxList = [x for x in neighboxList if x in boxDict]
+    # neighboxList = [x for x in neighboxList if x in boxDict]
+    neighboxList = list(set(neighboxList).intersection(boxDict))
     return neighboxList
 
-def adjacent_status_da(donorBoxLabelList, acceptorBoxLabelList, boxDict):
-    donorBoxesNeigh = neighbouring_boxes(donorBoxLabelList, boxDict)
-    if len(set(donorBoxesNeigh).intersection(acceptorBoxLabelList)) > 0:
-        return True
-    else:
-        return False
+# def adjacent_status_da(donorBoxLabelList, acceptorBoxLabelList, boxDict):
+#     donorBoxesNeigh = neighbouring_boxes(donorBoxLabelList, boxDict)
+#     if len(set(donorBoxesNeigh).intersection(acceptorBoxLabelList)) > 0:
+#         return True
+#     else:
+#         return False
+
+def adjacent_da(da, donorDict, acceptorDict, boxDict):
+    donorBoxLabels, acceptorBoxLabels = donorDict[da[0]].boxLabelList, acceptorDict[da[1]].boxLabelList
+    donorBoxesNeigh = neighbouring_boxes(donorBoxLabels, boxDict)
+    if len(set(donorBoxesNeigh).intersection(acceptorBoxLabels)) > 0:
+        return da

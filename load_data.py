@@ -49,12 +49,20 @@ def proxMat(atoms, coordinates):
             if dist > 20:
                 dist = 100.00000
             matrix[i,j] = dist ## only the lower triangular elements are populated
-    
+    # print('matrix', matrix)
     return matrix
+
+def EDM(A,B):
+    # taken from https://medium.com/swlh/euclidean-distance-matrix-4c3e1378d87f
+    p1 = np.sum(A**2, axis=1)[:, np.newaxis]
+    p2 = np.sum(B**2, axis=1)
+    p3 = -2 * np.dot(A,B.T)
+    # return np.round(np.sqrt(p1+p2+p3),8)
+    return np.tril(np.sqrt(np.round(p1+p2+p3,8)))
 
 
 def retrieveBI(atom1, atom2): # retrieve bond information, returns subsection of dataframe of the possible bonding between two atoms
-    # df = pd.read_csv('/Users/u7430616/Documents/data/bonds.csv')
+    # bond lengths taken from https://cccbdb.nist.gov/expbondlengths1.asp 
     # print(atom1, atom2)
     d = {'atom1': ['C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','O','O','N','N','O','C','N','S','O','H','N','N','N','N','S','S'],
     'atom2': ['C','C','C','C','Br','Cl','F','I','N','N','N','N','O','O','O','P','P','P','S','S','S','Se','Se','Si','O','O','O','O','S','H','H','H','H','F','N','N','N','N','S','S'],

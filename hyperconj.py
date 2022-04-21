@@ -3,6 +3,8 @@ import boxing
 import networkx as nx
 from itertools import chain
 from itertools import product
+import multiprocessing as mp
+
 
 # defining the donor and acceptor objects
 # each donor and acceptor will be labelled with dn (donor) or an (acceptor) where n is an integer
@@ -256,12 +258,15 @@ def donor_acceptor_connections(graph, donorDict, acceptorDict, boxDict):
     # da_comb_list = [x for x in da_comb_list if x not in rejected_combinations] # removes donors and acceptor pairings which correspond to the same group and donor acceptor pairings of the same classification (sigma or pi)
     da_comb_list = list(set(da_comb_list) - set(rejected_combinations))
     print('     removing rejected combinartions', len(da_comb_list))
-    da_comb_list = [x for x in da_comb_list if boxing.adjacent_status_da(donorDict[x[0]].boxLabelList, acceptorDict[x[1]].boxLabelList, boxDict)] # the boxes that donor and acceptors belong in are neighbours
+    # da_comb_list = [x for x in da_comb_list if boxing.adjacent_status_da(donorDict[x[0]].boxLabelList, acceptorDict[x[1]].boxLabelList, boxDict)] # the boxes that donor and acceptors belong in are neighbours
+    pool = mp.Pool(mp.cpu_count())
+    da_comb_list = pool.starmap_async(boxing.adjacent_da, [(da, donorDict, acceptorDict, boxDict) for da in da_comb_list]).get()
+    pool.close()
     print('     da connections boxing', len(da_comb_list))
     # print('da_comb_list', da_comb_list)
 
     # count = 0 
-    for comb in da_comb_list:
+    for comb in filter(None, da_comb_list):
         donorLabel = comb[0]
         acceptorLabel = comb[1]
 
