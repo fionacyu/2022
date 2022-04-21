@@ -1,7 +1,5 @@
-import pandas as pd
 import sys
 import re
-from numpy import linalg
 import numpy as np
 import math
 import collections
@@ -35,22 +33,22 @@ def read_xyz(xyzFile, chargefile=False):
     # print(nodeList)
     return atoms, coordinates, nodeList
 
-def proxMat(atoms, coordinates):
-    '''making use of symmetric nature of matrix'''
-    matrix = np.full((len(atoms), len(atoms)), 0, dtype='float64')
+# def proxMat(atoms, coordinates):
+#     '''making use of symmetric nature of matrix'''
+#     matrix = np.full((len(atoms), len(atoms)), 0, dtype='float64')
 
-    for i in range(len(atoms)):
-        a1 = np.array(coordinates[i])
-        colInd = range(0, i+1) ## this ensures i > j, we have a lower triangular matrix
-        for j in colInd:
-            a2 = np.array(coordinates[j])
-            dist = linalg.norm(a1-a2)
-            dist = round(dist, 5)
-            if dist > 20:
-                dist = 100.00000
-            matrix[i,j] = dist ## only the lower triangular elements are populated
-    # print('matrix', matrix)
-    return matrix
+#     for i in range(len(atoms)):
+#         a1 = np.array(coordinates[i])
+#         colInd = range(0, i+1) ## this ensures i > j, we have a lower triangular matrix
+#         for j in colInd:
+#             a2 = np.array(coordinates[j])
+#             dist = linalg.norm(a1-a2)
+#             dist = round(dist, 5)
+#             if dist > 20:
+#                 dist = 100.00000
+#             matrix[i,j] = dist ## only the lower triangular elements are populated
+#     # print('matrix', matrix)
+#     return matrix
 
 def EDM(A,B):
     # taken from https://medium.com/swlh/euclidean-distance-matrix-4c3e1378d87f
@@ -60,50 +58,68 @@ def EDM(A,B):
     # return np.round(np.sqrt(p1+p2+p3),8)
     return np.tril(np.sqrt(np.round(p1+p2+p3,8)))
 
+def get_bond_order(atom1, atom2, dist, tol):
+    bondDict = {('C', 'C'): {1: [1.37, 1.596], 1.5: [1.37, 1.432], 2: [1.243, 1.382], 3: [1.187, 1.268]}, ('C', 'Br'): {1: [1.789, 1.95]}, ('C', 'Cl'): {1: [1.612, 1.813]}, ('C', 'F'): {1: [1.262, 1.401]}, ('C', 'I'): {1: [1.992, 2.157]}, ('C', 'N'): {1: [1.347, 1.492], 1.5: [1.328, 1.35], 2: [1.207, 1.338], 3: [1.14, 1.177]}, ('C', 'O'): {1: [1.32, 1.448], 2: [1.115, 1.272], 3: [1.128, 1.145]}, ('C', 'P'): {1: [1.858, 1.858], 2: [1.673, 1.673], 3: [1.542, 1.562]}, ('C', 'S'): {1: [1.714, 1.849], 2: [1.553, 1.647], 3: [1.478, 1.535]}, ('C', 'Se'): {1: [1.855, 1.959], 2: [1.676, 1.709]}, ('C', 'Si'): {1: [1.722, 1.848]}, ('O', 'O'): {1: [1.116, 1.516], 2: [1.2, 1.208]}, ('N', 'O'): {1: [1.184, 1.507], 2: [1.066, 1.258]}, ('O', 'S'): {2: [1.405, 1.5]}, ('C', 'H'): {1: [0.931, 1.14]}, ('N', 'H'): {1: [0.836, 1.09]}, ('S', 'H'): {1: [1.322, 1.4]}, ('O', 'H'): {1: [0.912, 1.033]}, ('H', 'F'): {1: [0.917, 1.014]}, ('N', 'N'): {1: [1.181, 2.236], 1.5: [1.332, 1.332], 2: [1.139, 1.252], 3: [1.098, 1.133]}, ('S', 'S'): {1: [1.89, 2.155], 2: [1.825, 1.898]}}
 
-def retrieveBI(atom1, atom2): # retrieve bond information, returns subsection of dataframe of the possible bonding between two atoms
-    # bond lengths taken from https://cccbdb.nist.gov/expbondlengths1.asp 
-    # print(atom1, atom2)
-    d = {'atom1': ['C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','O','O','N','N','O','C','N','S','O','H','N','N','N','N','S','S'],
-    'atom2': ['C','C','C','C','Br','Cl','F','I','N','N','N','N','O','O','O','P','P','P','S','S','S','Se','Se','Si','O','O','O','O','S','H','H','H','H','F','N','N','N','N','S','S'],
-    'bond_type': ['single','aromatic','double','triple','single','single','single','single','single','aromatic','double','triple','single','double','triple','single','double','triple','single','double','triple','single','double','single','single','double','single','double','double','single','single','single','single','single','single','aromatic','double','triple','single','double'],
-    'av': [1.508,1.396,1.333,1.213,1.9,1.746,1.337,2.124,1.417,1.339,1.286,1.16,1.399,1.197,1.137,1.858,1.673,1.552,1.8,1.587,1.507,1.919,1.693,1.802,1.363,1.204,1.368,1.184,1.435,1.09,1.009,1.345,0.967,0.966,1.523,1.332,1.202,1.12,2.009,1.874],
-    'std': [0.039,0.014,0.024,0.021,0.053,0.047,0.03,0.054,0.05,0.008,0.041,0.008,0.034,0.027,0.012,0,0,0.014,0.038,0.037,0.04,0.056,0.013,0.07,0.119,0.005,0.094,0.038,0.044,0.018,0.043,0.02,0.022,0.069,0.332,0,0.057,0.019,0.084,0.033],
-    'min': [1.37,1.37,1.243,1.187,1.789,1.612,1.262,1.992,1.347,1.328,1.207,1.14,1.32,1.115,1.128,1.858,1.673,1.542,1.714,1.553,1.478,1.855,1.676,1.722,1.116,1.2,1.184,1.066,1.405,0.931,0.836,1.322,0.912,0.917,1.181,1.332,1.139,1.098,1.890,1.825],
-    'max': [1.596,1.432,1.382,1.268,1.95,1.813,1.401,2.157,1.492,1.35,1.338,1.177,1.448,1.272,1.145,1.858,1.673,1.562,1.849,1.647,1.535,1.959,1.709,1.848,1.516,1.208,1.507,1.258,1.5,1.14,1.09,1.4,1.033,1.014,2.236,1.332,1.252,1.133,2.155,1.898]}
-    df = pd.DataFrame(d)
-    if atom1 != atom2:
-        rdf1 = df.loc[(df['atom1'] == atom1) & (df['atom2'] == atom2)]
-        # print(rdf1)
-        rdf2 = df.loc[(df['atom1'] == atom2) & (df['atom2'] == atom1)]
-        # print(rdf2)
-
-        df_list = [rdf1, rdf2]
-        status = [rdf1.empty, rdf2.empty]
-        # print([i for i, x in enumerate(status) if not x][0])
-        rdf = df_list[[i for i, x in enumerate(status) if not x][0]]
-        # print(rdf)
+    if (atom1, atom2) or (atom2, atom1) in bondDict:
+        try:
+            dictionary = bondDict[(atom1, atom2)]
+        except KeyError:
+            dictionary = bondDict[(atom2, atom1)]
     
-        if rdf.empty:
-            print('this program only handles the elements H, B, C, N, O, F, P, S, Cl, Br and I')
-            sys.exit()
-        else:
-            return rdf
+        try:
+            bo = max([k for k in dictionary if dictionary[k][0] - tol <= dist <= dictionary[k][1] + tol])
+            return bo
+        except ValueError:
+            return 0
+    
+    else:
+        print('this program only handles the elements H, B, C, N, O, F, P, S, Cl, Br and I')
+        sys.exit()
 
-    elif atom1 == atom2:
-        rdf = df.loc[(df['atom1'] == atom1) & (df['atom2'] == atom2)]
+# def retrieveBI(atom1, atom2): # retrieve bond information, returns subsection of dataframe of the possible bonding between two atoms
+#     # bond lengths taken from https://cccbdb.nist.gov/expbondlengths1.asp 
+#     # print(atom1, atom2)
+#     d = {'atom1': ['C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','C','O','O','N','N','O','C','N','S','O','H','N','N','N','N','S','S'],
+#     'atom2': ['C','C','C','C','Br','Cl','F','I','N','N','N','N','O','O','O','P','P','P','S','S','S','Se','Se','Si','O','O','O','O','S','H','H','H','H','F','N','N','N','N','S','S'],
+#     'bond_type': ['single','aromatic','double','triple','single','single','single','single','single','aromatic','double','triple','single','double','triple','single','double','triple','single','double','triple','single','double','single','single','double','single','double','double','single','single','single','single','single','single','aromatic','double','triple','single','double'],
+#     'av': [1.508,1.396,1.333,1.213,1.9,1.746,1.337,2.124,1.417,1.339,1.286,1.16,1.399,1.197,1.137,1.858,1.673,1.552,1.8,1.587,1.507,1.919,1.693,1.802,1.363,1.204,1.368,1.184,1.435,1.09,1.009,1.345,0.967,0.966,1.523,1.332,1.202,1.12,2.009,1.874],
+#     'std': [0.039,0.014,0.024,0.021,0.053,0.047,0.03,0.054,0.05,0.008,0.041,0.008,0.034,0.027,0.012,0,0,0.014,0.038,0.037,0.04,0.056,0.013,0.07,0.119,0.005,0.094,0.038,0.044,0.018,0.043,0.02,0.022,0.069,0.332,0,0.057,0.019,0.084,0.033],
+#     'min': [1.37,1.37,1.243,1.187,1.789,1.612,1.262,1.992,1.347,1.328,1.207,1.14,1.32,1.115,1.128,1.858,1.673,1.542,1.714,1.553,1.478,1.855,1.676,1.722,1.116,1.2,1.184,1.066,1.405,0.931,0.836,1.322,0.912,0.917,1.181,1.332,1.139,1.098,1.890,1.825],
+#     'max': [1.596,1.432,1.382,1.268,1.95,1.813,1.401,2.157,1.492,1.35,1.338,1.177,1.448,1.272,1.145,1.858,1.673,1.562,1.849,1.647,1.535,1.959,1.709,1.848,1.516,1.208,1.507,1.258,1.5,1.14,1.09,1.4,1.033,1.014,2.236,1.332,1.252,1.133,2.155,1.898]}
+#     df = pd.DataFrame(d)
+#     if atom1 != atom2:
+#         rdf1 = df.loc[(df['atom1'] == atom1) & (df['atom2'] == atom2)]
+#         # print(rdf1)
+#         rdf2 = df.loc[(df['atom1'] == atom2) & (df['atom2'] == atom1)]
+#         # print(rdf2)
 
-        if rdf.empty:
-            print('this program only handles the elements H, B, C, N, O, F, P, S, Cl, Br and I')
-            sys.exit()
-        else:
-            return rdf
+#         df_list = [rdf1, rdf2]
+#         status = [rdf1.empty, rdf2.empty]
+#         # print([i for i, x in enumerate(status) if not x][0])
+#         rdf = df_list[[i for i, x in enumerate(status) if not x][0]]
+#         # print(rdf)
+    
+#         if rdf.empty:
+#             print('this program only handles the elements H, B, C, N, O, F, P, S, Cl, Br and I')
+#             sys.exit()
+#         else:
+#             return rdf
 
-def get_range(df, bondtype):
-    rdf = df.loc[df['bond_type'] == bondtype]
-    min = rdf['min'].to_list()[0]
-    max = rdf['max'].to_list()[0]
-    return min, max
+#     elif atom1 == atom2:
+#         rdf = df.loc[(df['atom1'] == atom1) & (df['atom2'] == atom2)]
+
+#         if rdf.empty:
+#             print('this program only handles the elements H, B, C, N, O, F, P, S, Cl, Br and I')
+#             sys.exit()
+#         else:
+#             return rdf
+
+# def get_range(df, bondtype):
+#     rdf = df.loc[df['bond_type'] == bondtype]
+#     min = rdf['min'].to_list()[0]
+#     max = rdf['max'].to_list()[0]
+#     return min, max
 
 def get_valence(elem):
     valence = {'H': 1,

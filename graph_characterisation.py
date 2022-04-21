@@ -33,41 +33,49 @@ def hybridisation2(graph, proxMatrix, tol=0.003):
         # otherAtoms = [list(bondVector).index(x) for x in bondVector if x < 3 and x > 0]
         # print('otherAtoms: ', otherAtoms)
 
-        weightDict = {'single':1, 'aromatic': 1.5, 'double':2, 'triple': 3}
+        # weightDict = {'single':1, 'aromatic': 1.5, 'double':2, 'triple': 3}
 
         for j in otherAtoms: 
             
             atom1, atom2 = graph.nodes[nodeNumber]['element'], graph.nodes[j+1]['element']
+            bo = load_data.get_bond_order(atom1, atom2, bondVector[j], tol)
+
+            if bo != 0:
+                if len(set([(nodeNumber, j+1), (j+1, nodeNumber)]).intersection(edgeAttr)) == 0:
+                    edgeAttr[(nodeNumber, j+1)] = {'bo': bo}
+                    bondElec = bondElec + 2 * bo
+                    bondED = bondED + 1
+
             # print(atom1, atom2)
             # print(nodeNumber, j+1)
-            rdf = load_data.retrieveBI(atom1, atom2)
-            bondtype= rdf.bond_type.to_list()
-            # print(bondtype)
-            weightBT = [weightDict['%s' % x] for x in bondtype]
-            # print(weightBT)
+            # rdf = load_data.retrieveBI(atom1, atom2)
+            # bondtype= rdf.bond_type.to_list()
+            # # print(bondtype)
+            # weightBT = [weightDict['%s' % x] for x in bondtype]
+            # # print(weightBT)
 
-            sortedBT = [i for _, i in sorted(zip(weightBT, bondtype), reverse=True)]
-            # print(sortedBT)
+            # sortedBT = [i for _, i in sorted(zip(weightBT, bondtype), reverse=True)]
+            # # print(sortedBT)
 
-            for bt in sortedBT:
-                min, max = load_data.get_range(rdf, bt)
-                min, max = min - tol, max + tol
-                # print(min, max)
-                if min <= bondVector[j] <= max:
-                    # print('loop is running', min, max)
-                    bondtype = bt
-                    # print(bondtype, atoms[j])
-                    bondElec = bondElec + 2 * weightDict[bt]
-                    bondED = bondED + 1
+            # for bt in sortedBT:
+            #     min, max = load_data.get_range(rdf, bt)
+            #     min, max = min - tol, max + tol
+            #     # print(min, max)
+            #     if min <= bondVector[j] <= max:
+            #         # print('loop is running', min, max)
+            #         bondtype = bt
+            #         # print(bondtype, atoms[j])
+            #         bondElec = bondElec + 2 * weightDict[bt]
+            #         bondED = bondED + 1
                     
-                    # if (nodeNumber, j+1) not in edgeAttr and (j+1, nodeNumber) not in edgeAttr:
-                    if len(set([(nodeNumber, j+1), (j+1, nodeNumber)]).intersection(edgeAttr)) == 0:
-                        edgeAttr[(nodeNumber, j+1)] = {'bo': weightDict[bt]}
-                    break
-                elif (bt == 'single' and bondVector[j] < min) or (bt == 'single' and bondVector[j] > max): #no covalent bond exists between atom1 and atom2
-                    break
-                else:
-                    continue
+            #         # if (nodeNumber, j+1) not in edgeAttr and (j+1, nodeNumber) not in edgeAttr:
+            #         if len(set([(nodeNumber, j+1), (j+1, nodeNumber)]).intersection(edgeAttr)) == 0:
+            #             edgeAttr[(nodeNumber, j+1)] = {'bo': weightDict[bt]}
+            #         break
+            #     elif (bt == 'single' and bondVector[j] < min) or (bt == 'single' and bondVector[j] > max): #no covalent bond exists between atom1 and atom2
+            #         break
+            #     else:
+            #         continue
         # print('bondED', bondED)
         # print('bondElec', bondElec)
         valElec = load_data.get_valence(graph.nodes[nodeNumber]['element'])
