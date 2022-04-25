@@ -3,8 +3,6 @@ import networkx as nx
 import multiprocessing as mp
 import time
 
-# mp.set_start_method('fork')
-
 class Cycle:
     def __init__(self):
         self.edgeList = []
@@ -155,16 +153,21 @@ def _min_cycle_basis(comp, weight):
     # weight=None. Depending on implementation, it may be faster as well
     # t4 = time.process_time()
     spanning_tree_edges = list(nx.minimum_spanning_edges(comp, weight=None, data=False))
+    # print('spanning tree edges', spanning_tree_edges)
     # print('min spanning tree: ', time.process_time() - t4)
     # edges_excl = [frozenset(e) for e in comp.edges() if e not in spanning_tree_edges]
     edges_excl = [frozenset(e) for e in list(set(comp.edges()) - set(spanning_tree_edges))]
     N = len(edges_excl)
+    # print('len(edges_excl): ', len(edges_excl))
 
     # We maintain a set of vectors orthogonal to sofar found cycles
     set_orth = [{edge} for edge in edges_excl]
+    # t1 = time.process_time()
     for k in range(N):
         # kth cycle is "parallel" to kth vector in set_orth
+        # t = time.process_time()
         new_cycle = _min_cycle(comp, set_orth[k], weight=weight)
+        # print('_min_cycle', time.process_time() - t)
         # print('list(set().union(*new_cycle))', [tuple(list(x)) for x in new_cycle])
         cb.append([tuple(list(x)) for x in new_cycle])
         # now update set_orth so that k+1,k+2... th elements are
@@ -175,6 +178,7 @@ def _min_cycle_basis(comp, weight):
             for orth in set_orth[k + 1 :]
         ]
     # print('_min_cycle_basis', time.process_time() - t3)
+    # print('_min_cycle_basis time: ', time.process_time() - t1)
     return cb
 
 def minimum_cycle_basis(G, weight=None):

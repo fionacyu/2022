@@ -246,23 +246,23 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
     
     return donorDict, acceptorDict
 
-def donor_acceptor_connections(graph, donorDict, acceptorDict, boxDict):
+def donor_acceptor_connections(graph, donorDict, acceptorDict):
     connectionDict = {}
     # print('donor: ', [k for k, _ in donorDict.items()])
     # print('acceptor: ', [k for k, _ in acceptorDict.items()])
 
     da_comb_list = list(product([donorDict[k].name for k, _ in donorDict.items()], [acceptorDict[k].name for k, _ in acceptorDict.items()])) # need to remove ones which are the same
-    print('     da_comb_list', len(da_comb_list))#, da_comb_list)
+    # print('     da_comb_list', len(da_comb_list))#, da_comb_list)
     rejected_combinations = [x for x in da_comb_list if donorDict[x[0]].nodes == acceptorDict[x[1]].nodes and donorDict[x[0]].edges == acceptorDict[x[1]].edges and donorDict[x[0]].terminal_nodes == acceptorDict[x[1]].terminal_nodes] + [x for x in da_comb_list if donorDict[x[0]].classification == acceptorDict[x[1]].classification]
-    print('     rejected comb', len(rejected_combinations))
+    # print('     rejected comb', len(rejected_combinations))
     # da_comb_list = [x for x in da_comb_list if x not in rejected_combinations] # removes donors and acceptor pairings which correspond to the same group and donor acceptor pairings of the same classification (sigma or pi)
     da_comb_list = list(set(da_comb_list) - set(rejected_combinations))
-    print('     removing rejected combinartions', len(da_comb_list))
+    # print('     removing rejected combinartions', len(da_comb_list))
     # da_comb_list = [x for x in da_comb_list if boxing.adjacent_status_da(donorDict[x[0]].boxLabelList, acceptorDict[x[1]].boxLabelList, boxDict)] # the boxes that donor and acceptors belong in are neighbours
     pool = mp.Pool(mp.cpu_count())
-    da_comb_list = pool.starmap_async(boxing.adjacent_da, [(da, donorDict, acceptorDict, boxDict) for da in da_comb_list]).get()
+    da_comb_list = pool.starmap_async(boxing.adjacent_da, [(da, donorDict, acceptorDict) for da in da_comb_list]).get()
     pool.close()
-    print('     da connections boxing', len(da_comb_list))
+    # print('     da connections boxing', len(da_comb_list))
     # print('da_comb_list', da_comb_list)
 
     # count = 0 
@@ -298,7 +298,7 @@ def donor_acceptor_connections(graph, donorDict, acceptorDict, boxDict):
     return connectionDict
             
 
-def classify_donor_acceptor_connections(graph, conjugated_edges, boxDict):
+def classify_donor_acceptor_connections(graph, conjugated_edges):
     donorDict, acceptorDict = {}, {}
 
     dlist, alist = donor_acceptor_status_conj_nodes(graph, conjugated_edges)
@@ -319,6 +319,6 @@ def classify_donor_acceptor_connections(graph, conjugated_edges, boxDict):
     acceptorDict.update(alist)
     del dlist, alist
 
-    connectionDict = donor_acceptor_connections(graph, donorDict, acceptorDict, boxDict)
+    connectionDict = donor_acceptor_connections(graph, donorDict, acceptorDict)
 
     return donorDict, acceptorDict, connectionDict

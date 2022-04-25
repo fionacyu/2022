@@ -45,45 +45,41 @@ def hybridisation2(graph, proxMatrix, tol=0.003):
                     edgeAttr[(nodeNumber, j+1)] = {'bo': bo}
                     bondElec = bondElec + 2 * bo
                     bondED = bondED + 1
-
-            # print(atom1, atom2)
-            # print(nodeNumber, j+1)
-            # rdf = load_data.retrieveBI(atom1, atom2)
-            # bondtype= rdf.bond_type.to_list()
-            # # print(bondtype)
-            # weightBT = [weightDict['%s' % x] for x in bondtype]
-            # # print(weightBT)
-
-            # sortedBT = [i for _, i in sorted(zip(weightBT, bondtype), reverse=True)]
-            # # print(sortedBT)
-
-            # for bt in sortedBT:
-            #     min, max = load_data.get_range(rdf, bt)
-            #     min, max = min - tol, max + tol
-            #     # print(min, max)
-            #     if min <= bondVector[j] <= max:
-            #         # print('loop is running', min, max)
-            #         bondtype = bt
-            #         # print(bondtype, atoms[j])
-            #         bondElec = bondElec + 2 * weightDict[bt]
-            #         bondED = bondED + 1
-                    
-            #         # if (nodeNumber, j+1) not in edgeAttr and (j+1, nodeNumber) not in edgeAttr:
-            #         if len(set([(nodeNumber, j+1), (j+1, nodeNumber)]).intersection(edgeAttr)) == 0:
-            #             edgeAttr[(nodeNumber, j+1)] = {'bo': weightDict[bt]}
-            #         break
-            #     elif (bt == 'single' and bondVector[j] < min) or (bt == 'single' and bondVector[j] > max): #no covalent bond exists between atom1 and atom2
-            #         break
-            #     else:
-            #         continue
-        # print('bondED', bondED)
-        # print('bondElec', bondElec)
         valElec = load_data.get_valence(graph.nodes[nodeNumber]['element'])
         elecDom = math.ceil(bondED + 0.5 * (valElec - 0.5 * bondElec - graph.nodes[nodeNumber]['charge'])) 
         # elecDom = round(bondED + 0.5 * (valElec - 0.5 * bondElec - graph.nodes[nodeNumber]['charge'])) 
         # print('elecDom', elecDom)
         graph.nodes[nodeNumber]['ed'] = elecDom
     # print(edgeAttr)
+
+    # # determining edges
+    # mask = proxMatrix != 0.0
+    # print(mask)
+    # indarray = np.where(mask)
+    # t = time.process_time()
+    # for i in range(len(indarray[0])):
+    #     node1, node2 = indarray[0][i] + 1, indarray[1][i] + 1
+    #     # print(node1, node2)
+    #     # print(proxMatrix[node1-1, node2-1])
+    #     t1 = time.process_time()
+    #     # if len(set([graph.nodes[node1]['box']]).intersection(boxing.neighbouring_boxes(graph.nodes[node2]['box'], boxDict))) > 0 and proxMatrix[node1-1, node2-1] < 3:
+    #     if proxMatrix[node1-1, node2-1] < 3:
+    #         atom1, atom2 = graph.nodes[node1]['element'], graph.nodes[node2]['element']
+    #         bo = load_data.get_bond_order(atom1, atom2, proxMatrix[node1-1, node2-1], tol)
+    #         if bo != 0:
+    #             if len(set([(node1, node2), (node2, node1)]).intersection(edgeAttr)) == 0:
+    #                 edgeAttr[(node1, node2)] = {'bo': bo}
+    # print('getting edges time', time.process_time() - t)
+    # graph.add_edges_from([k for k, _ in edgeAttr.items()])
+    # nx.set_edge_attributes(graph, edgeAttr)
+
+    # # defining ed of nodes
+    # for node in ha:
+    #     bondED = graph.degree[node]
+    #     bondElec = sum([graph[x][node]['bo'] * 2 for x in graph.neighbors(node)])
+    #     valElec = load_data.get_valence(graph.nodes[node]['element'])
+    #     elecDom = math.ceil(bondED + 0.5 * (valElec - 0.5 * bondElec - graph.nodes[node]['charge'])) 
+    #     graph.nodes[node]['ed'] = elecDom
     
     graph.add_edges_from([k for k, _ in edgeAttr.items()])
     nx.set_edge_attributes(graph, edgeAttr)
@@ -222,16 +218,20 @@ def conjugate_region(graph): # returns set of nodes(atoms) whose electrons are c
     return conjugated_nodes, conjugated_edges, graph # conjugated edges returned will be mutually exclusive, that is, no edge in one list in conjugated_edges will appear in another list in conjugated_edges
 
 def update_graph_pi(graph): # adds the no. of pi electrons (participating in conjugation) to each node
+    t1 = time.process_time()
     conjugated_nodes, conjugated_edges, graph = conjugate_region(graph)
+    print('     obtaining conjugate region time: ', time.process_time() - t1)
     # print('conjugated_nodes', conjugated_nodes)
     # print('conjugated_edges', conjugated_edges)
+    t2 = time.process_time()
     for j, connections in enumerate(conjugated_nodes): 
         # print([x for x in connections])
         for i, n in enumerate([x for x in connections]):
             # print(n, graph.nodes[n]['element'])
             valence = load_data.get_valence(graph.nodes[n]['element'])
             # print('valence', valence)
-            sigmaBonds = len([x for x in graph.neighbors(n)]) # number of sigma bonds
+            # sigmaBonds = len([x for x in graph.neighbors(n)]) # number of sigma bonds
+            sigmaBonds = graph.degree[n]
             # print('sigmaBonds', sigmaBonds)
             elecDom = graph.nodes[n]['ed']
             # print('elecDom', elecDom)
@@ -239,7 +239,8 @@ def update_graph_pi(graph): # adds the no. of pi electrons (participating in con
             if i == 0 or i == len([x for x in connections]) - 1:
                 # need to check for the fact that the atom is connected to other pi systems not part of the conjugated system or separate conjugated systems
                 edgeList = get_edges_of_node(n, [x for x in graph.edges if graph[x[0]][x[1]]['bo'] >= 2]) #edges the node is part of which is double bond or triple
-                reject_edges = [x for x in edgeList if x in conjugated_edges[j] or x[::-1] in conjugated_edges[j]] 
+                # reject_edges = [x for x in edgeList if x in conjugated_edges[j] or x[::-1] in conjugated_edges[j]] 
+                reject_edges = list(set(edgeList).intersection(conjugated_edges[j]))
                 # edgeList = [x for x in edgeList if x not in reject_edges] # non conjugated edges the node is bonded to
                 edgeList = list(set(edgeList) - set(reject_edges))
                 # print('edgeList', edgeList)
@@ -254,17 +255,18 @@ def update_graph_pi(graph): # adds the no. of pi electrons (participating in con
             else:
                 graph.nodes[n]['pi'] = piELec # tells us the number of pi electrons per atom, but doesn't distinguish between conjugated vs. non-conjugated systems
 
-    
+    print('     evaluating pi electrons: ', time.process_time() - t2)
     return graph, conjugated_nodes, conjugated_edges
 
 
-def main(graph, atoms, coordinates, nodeList):
-    graph.add_nodes_from(nodeList)
+def main(graph, coordinates):
+    # graph.add_nodes_from(nodeList)
 
     # distance matrix
     t1 = time.process_time()
     # matrix = load_data.proxMat(atoms, coordinates)
     matrix = load_data.EDM(np.array(coordinates), np.array(coordinates))
+    # print(matrix)
     print('     proximity matrix time: ', time.process_time() - t1)
 
     # updating graph 
@@ -279,14 +281,5 @@ def main(graph, atoms, coordinates, nodeList):
     t4 = time.process_time()
     graph, _, conjugated_edges = update_graph_pi(graph) # adds pi electrons (participating in conjugation) as node attribute, retrieves the edges involved in a conjugated system
     print('     update graph pi time: ', time.process_time() - t4)
-    # cycle_edge_list = rings.minimum_cycle_basis(graph) # list of lists
-    # print('cycle_edge_list', cycle_edge_list)
-    # print('cycle_edge_list', cycle_edge_list)
-    # graph = update_edge_rings(graph, cycle_edge_list)
-    # graph = get_branching(graph)
-    # small_aromatic_cycles = check_aromaticity(graph, conjugated_edges, coordinates)
-    # print('aromatic_edges', len(aromatic_edges))
-
-    # graph = update_edge_aromaticity(graph, aromatic_edges)
 
     return graph, conjugated_edges#, small_aromatic_cycles#, cycle_edge_list

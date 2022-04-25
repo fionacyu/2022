@@ -33,7 +33,7 @@ def get_as_from_edge(small_aromatic_cycles, edge): # returns list of list
     acycles = [small_aromatic_cycles[i] for i in trueind]
     return acycles
 
-def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict, boxDict): # returns list of lists of edges in an aromatic system, len(return[output]) = no. of aromatic systems there are
+def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict): # returns list of lists of edges in an aromatic system, len(return[output]) = no. of aromatic systems there are
     if len(cycleDict) == 0:
         return []
     else:
@@ -41,7 +41,7 @@ def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict, boxDict):
         cycle_keys = [k for k in cycleDict]
         conjugated_indices = list(range(len(conjugated_edges)))
         prodList = list(product(cycle_keys,conjugated_indices)) # box edges needs to go here
-        prodList = [x for x in prodList if len( set(list(dict.fromkeys([graph.nodes[y]['box'] for y in list(set(chain(*conjugated_edges[x[1]])))  ]))).intersection(boxing.neighbouring_boxes(cycleDict[x[0]].boxLabelList, boxDict))) > 0 ]
+        prodList = [x for x in prodList if boxing.adjacent_systems([graph.nodes[y]['box'] for y in list(set(chain(*conjugated_edges[x[1]])))], cycleDict[x[0]].boxLabelList) == 1]
         # print('prodList', prodList)
         for prod in prodList:
             # cycles = sorted(cycle_edge_list[prod[0]])
@@ -98,8 +98,8 @@ def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict, boxDict):
         # print('small_aromatic_cycles', small_aromatic_cycles)
         return small_aromatic_cycles
 
-def classify_aromatic_systems(graph, conjugated_edges, coordinates, cycleDict, boxDict):
-    small_aromatic_cycles = check_aromaticity(graph, conjugated_edges, coordinates, cycleDict, boxDict)
+def classify_aromatic_systems(graph, conjugated_edges, coordinates, cycleDict):
+    small_aromatic_cycles = check_aromaticity(graph, conjugated_edges, coordinates, cycleDict)
     # print('small_aromatic_cycles', small_aromatic_cycles)
     edgeList = miscellaneous.flatten(small_aromatic_cycles)
     nodeList = [x for x in set(chain(*miscellaneous.flatten(small_aromatic_cycles)))]

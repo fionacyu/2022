@@ -37,14 +37,14 @@ else:
 # print(edges_to_cut_list)
 
 # construct graph of molecule 
-t1 = time.process_time()
-G = nx.Graph()
-G, conjugated_edges = graph_characterisation.main(G, atoms, coordinates, nodeList)
-print('graph_characterisation time: ', time.process_time() - t1)
-
 t2 = time.process_time()
-G, boxDict = boxing.box_classification(coordinates, G) # d parameter goes at the end of this function
+G = nx.Graph()
+G = boxing.box_classification(coordinates, G, nodeList) # d parameter goes at the end of this function
 print('boxing.box_classification time: ', time.process_time() - t2)
+
+t1 = time.process_time()
+G, conjugated_edges = graph_characterisation.main(G, coordinates)
+print('graph_characterisation time: ', time.process_time() - t1)
 
 t3 = time.process_time()
 cycleDict = rings.edgeList_dictionary(G)
@@ -53,13 +53,14 @@ print('defining rings time: ', time.process_time() - t3)
 t4 = time.process_time()
 cycleDict = boxing.classify_cycles(G, cycleDict)
 print('ring classification boxes time: ', time.process_time() - t4)
+# print('cycleDict', cycleDict)
 
 t5 = time.process_time()
-aromaticDict = aromaticity.classify_aromatic_systems(G, conjugated_edges, coordinates, cycleDict, boxDict)
+aromaticDict = aromaticity.classify_aromatic_systems(G, conjugated_edges, coordinates, cycleDict)
 print('aromaticity classification time: ', time.process_time() - t5)
 
 t6 = time.process_time()
-donorDict, acceptorDict, connectionDict = hyperconj.classify_donor_acceptor_connections(G, conjugated_edges, boxDict)
+donorDict, acceptorDict, connectionDict = hyperconj.classify_donor_acceptor_connections(G, conjugated_edges)
 print('hyerpconjugation classification time: ', time.process_time() - t6)
 
 
@@ -84,6 +85,7 @@ binaryList = np.random.randint(2,size=len(nonHedges))
 
 edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
 # print(edges_to_cut_list)
+# edges_to_cut_list = [(2,3), (4,5)]
 
 
 # print('minimum_cycle_basis', [c for c in rings.minimum_cycle_basis(G)])
@@ -119,19 +121,19 @@ print('hybrid_penalty', hybrid_penalty)
 #     print('edges', acceptorDict[k].edges)
 #     print('terminal_nodes', acceptorDict[k].terminal_nodes)
 
-hyperconj_penalty = calculate_penalty.hyperconjugation_penalty(G, donorDict, acceptorDict, connectionDict, [x for x in edges_to_cut_list], boxDict)
+hyperconj_penalty = calculate_penalty.hyperconjugation_penalty(G, donorDict, acceptorDict, connectionDict, [x for x in edges_to_cut_list])
 print('hyperconjugation_penalty', hyperconj_penalty)
 # print(donorList)
 
 
-aromatic_penalty = calculate_penalty.aromaticity_penalty(G, aromaticDict, [x for x in edges_to_cut_list], boxDict)
+aromatic_penalty = calculate_penalty.aromaticity_penalty(G, aromaticDict, [x for x in edges_to_cut_list])
 print('aromatic_penalty', aromatic_penalty)
 # for k,v in connectionDict.items():
 #     print(k)
 #     print('simple path edges: ', connectionDict[k].simple_paths)
 #     print('bond separation: ', connectionDict[k].bond_separation)
 
-ring_penalty = calculate_penalty.ring_penalty(G, cycleDict, edges_to_cut_list, boxDict)
+ring_penalty = calculate_penalty.ring_penalty(G, cycleDict, edges_to_cut_list)
 print('ring_penalty', ring_penalty)
 elapsed_time = time.process_time() - t
 print('penalty time: ', elapsed_time)

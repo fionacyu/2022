@@ -1,8 +1,9 @@
-from scipy import misc
+import load_data
 import miscellaneous
 import numpy as np 
 from itertools import product
 from itertools import chain
+import math
 
 
 class Box:
@@ -96,44 +97,31 @@ def all_classification(graph, donorDict, acceptorDict, cycleDict, aromaticDict):
     aromaticDict = classify_aromsys(graph, aromaticDict)
     return donorDict, acceptorDict, aromaticDict
 
-def box_classification(coordinates, graph, d=5):
+def box_classification(coordinates, graph, nodeList, d=5):
+    graph.add_nodes_from(nodeList)
     xmin, xmax, ymin, ymax, zmin, zmax = get_boundary_values(coordinates)
     boxDict = classify_boxes(xmin, xmax, ymin, ymax, zmin, zmax, d)
     graph, boxDict = classify_nodes(graph, coordinates, boxDict)
     
-    return graph, boxDict
+    return graph
 
 
-def neighbouring_boxes(boxLabelList, boxDict):
-    binaryList = [-1,0,1]
-    possibilities = product(binaryList, repeat=3)
-    binList = [np.array(x) for x in possibilities]
-    npboxLabels = [np.array(x) for x in boxLabelList]
-    neighbourList = []
-    for label in npboxLabels:
-        neighbours = [label + x for x in binList]
-        neighbourList.extend(neighbours)
-    
-    neighboxList = np.array(neighbourList) #+ npboxLabels
-    neighboxList = list(np.unique(neighboxList, axis=0))
-    # neighboxList = list(set(neighbourList))
-    # neighboxList = list(dict.fromkeys(neighboxList)) # get the unique values
-    neighboxList = [tuple(x) for x in neighboxList]
-    # print('neighboxList', neighboxList)
-    # print('boxes: ', [box for box in boxDict])
-    # neighboxList = [x for x in neighboxList if x in boxDict]
-    neighboxList = list(set(neighboxList).intersection(boxDict))
-    return neighboxList
-
-# def adjacent_status_da(donorBoxLabelList, acceptorBoxLabelList, boxDict):
-#     donorBoxesNeigh = neighbouring_boxes(donorBoxLabelList, boxDict)
-#     if len(set(donorBoxesNeigh).intersection(acceptorBoxLabelList)) > 0:
-#         return True
-#     else:
-#         return False
-
-def adjacent_da(da, donorDict, acceptorDict, boxDict):
+def adjacent_da(da, donorDict, acceptorDict):
     donorBoxLabels, acceptorBoxLabels = donorDict[da[0]].boxLabelList, acceptorDict[da[1]].boxLabelList
-    donorBoxesNeigh = neighbouring_boxes(donorBoxLabels, boxDict)
-    if len(set(donorBoxesNeigh).intersection(acceptorBoxLabels)) > 0:
+    # donorBoxesNeigh = neighbouring_boxes(donorBoxLabels, boxDict)
+    # if len(set(donorBoxesNeigh).intersection(acceptorBoxLabels)) > 0:
+    #     return da
+
+    distMatrix = load_data.EDMbox(np.array(donorBoxLabels), np.array(acceptorBoxLabels))
+    mask = distMatrix <= math.sqrt(3)
+    if np.where(mask)[0].size > 0:
         return da
+
+def adjacent_systems(boxLabels1, boxLabels2):
+    distMatrix = load_data.EDMbox(np.array(boxLabels1), np.array(boxLabels2))
+    mask = distMatrix <= math.sqrt(3)
+    if np.where(mask)[0].size > 0:
+        return 1
+    else:
+        return 0
+    

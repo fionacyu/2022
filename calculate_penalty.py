@@ -1,4 +1,3 @@
-import boxing
 import load_data
 from cmath import cos, exp
 import miscellaneous
@@ -93,7 +92,7 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
     return round(penalty,4)
 
 
-def hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edges_to_cut_list, boxDict):
+def hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edges_to_cut_list):
     if len(connectionDict) == 0:
         return 0
     
@@ -103,10 +102,9 @@ def hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edg
         acceptor = connection[1]
 
         boxLabelList = donorDict[donor].boxLabelList + acceptorDict[acceptor].boxLabelList
-        neighBoxes = boxing.neighbouring_boxes(boxLabelList, boxDict)
         # edges in the same box or neighbouring boxes as the donors/acceptors
-        edgesNeighBoxes = [e for e in edges_to_cut_list if graph.nodes[e[0]]['box'] in neighBoxes or graph.nodes[e[1]]['box'] in neighBoxes]
-        influential_edges = [e for e in edgesNeighBoxes if (e in connectionDict[connection].simple_paths or e in donorDict[donor].edges or e in acceptorDict[acceptor].edges) or (e[::-1] in connectionDict[connection].simple_paths or e[::-1] in donorDict[donor].edges or e[::-1] in acceptorDict[acceptor].edges)]
+        edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0 ]
+        influential_edges = [e for e in edgesBoxes if (e in connectionDict[connection].simple_paths or e in donorDict[donor].edges or e in acceptorDict[acceptor].edges) or (e[::-1] in connectionDict[connection].simple_paths or e[::-1] in donorDict[donor].edges or e[::-1] in acceptorDict[acceptor].edges)]
         #these are the edges that will impact the donor-acceptor pair
         if influential_edges:
             # print(connection)
@@ -154,7 +152,7 @@ def hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edg
     return round(penalty,4)
 
 
-def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list, boxDict):
+def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
     if len(aromaticDict) == 0:
         return 0
 
@@ -162,11 +160,10 @@ def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list, boxDict):
     for asys in aromaticDict:
         #box edges go here
         boxLabelList = aromaticDict[asys].boxLabelList
-        neighBoxes = boxing.neighbouring_boxes(boxLabelList, boxDict)
-        edgesNeighBoxes = [e for e in edges_to_cut_list if graph.nodes[e[0]]['box'] in neighBoxes or graph.nodes[e[1]]['box'] in neighBoxes]
+        edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0 ]
 
-        influential_edges = [e for e in edgesNeighBoxes if e in miscellaneous.flatten(aromaticDict[asys].cycle_list) and e not in aromaticDict[asys].bridging_edges] # doesn't include bridging edges
-        bedgeList = [e for e in edgesNeighBoxes if e in miscellaneous.flatten(aromaticDict[asys].cycle_list) and e in aromaticDict[asys].bridging_edges] # bridging edges only
+        influential_edges = [e for e in edgesBoxes if e in miscellaneous.flatten(aromaticDict[asys].cycle_list) and e not in aromaticDict[asys].bridging_edges] # doesn't include bridging edges
+        bedgeList = [e for e in edgesBoxes if e in miscellaneous.flatten(aromaticDict[asys].cycle_list) and e in aromaticDict[asys].bridging_edges] # bridging edges only
 
         nonbe_cycle_ind_list = miscellaneous.flatten([miscellaneous.index_of_cycle_list(aromaticDict[asys].cycle_list, edge) for edge in influential_edges])
         nonbe_cycle_ind_list = list(dict.fromkeys(nonbe_cycle_ind_list)) # get the unique values
@@ -186,15 +183,14 @@ def ring_strain(size):
     strain = pow(y, -1*m) * (d - 1 - l) + ((y-1+l)/y) * np.exp(-1 * a * (y-1)) * np.cos(b * (y-1)) 
     return strain.real
 
-def ring_penalty(graph, cycleDict, edges_to_cut_list, boxDict):
+def ring_penalty(graph, cycleDict, edges_to_cut_list):
     if len(cycleDict) == 0:
         return 0
     # box edges go here, get the edges that would only be near cycles
     boxLabelList = list(dict.fromkeys(miscellaneous.flatten([cycleDict[x].boxLabelList for x in cycleDict])))
-    neighBoxes = boxing.neighbouring_boxes(boxLabelList, boxDict)
-    edgesNeighBoxes = [e for e in edges_to_cut_list if graph.nodes[e[0]]['box'] in neighBoxes or graph.nodes[e[1]]['box'] in neighBoxes]
+    edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or  len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0  ]
 
-    impactedCycles = [c for c in cycleDict if len(set(edgesNeighBoxes).intersection(cycleDict[c].edgeList)) > 0]
+    impactedCycles = [c for c in cycleDict if len(set(edgesBoxes).intersection(cycleDict[c].edgeList)) > 0]
     impactedCycleSize = [len(cycleDict[c].edgeList) for c in impactedCycles]
     totalstrain = round(sum([ring_strain(x) for x in impactedCycleSize]),4)
     return abs(totalstrain)
