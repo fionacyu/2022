@@ -1,5 +1,6 @@
 import sys
-import torch
+import load_data
+import graph_characterisation
 
 def flatten(t):
     return [item for sublist in t for item in sublist]
@@ -66,3 +67,46 @@ def shortest_path_length(graph, node1, node2):
         path_index += 1
     # No path is found
     return (node1, 0)
+
+def get_pi_elec(conjNodeList, conjEdgeList, graph):
+    tupleList = []
+    for i, n in enumerate([x for x in conjNodeList]):
+            # print(n, graph.nodes[n]['element'])
+            valence = load_data.get_valence(graph.nodes[n]['element'])
+            # print('valence', valence)
+            # sigmaBonds = len([x for x in graph.neighbors(n)]) # number of sigma bonds
+            sigmaBonds = graph.degree[n]
+            # print('sigmaBonds', sigmaBonds)
+            elecDom = graph.nodes[n]['ed']
+            # print('elecDom', elecDom)
+
+            piELec = valence - sigmaBonds - 2 * (elecDom - sigmaBonds)- graph.nodes[n]['charge'] # gives the number of pi electrons in the conjugated system, formula is essentially FC = V - N - B/2           
+            if i == 0 or i == len([x for x in conjNodeList]) - 1:
+                # need to check for the fact that the atom is connected to other pi systems not part of the conjugated system or separate conjugated systems
+                edgeList = graph_characterisation.get_edges_of_node(n, [x for x in graph.edges if graph[x[0]][x[1]]['bo'] >= 2]) #edges the node is part of which is double bond or triple
+                # edgeList = edgeList + [x[::-1] for x in edgeList]
+                # print('edgeList', edgeList)
+                # reject_edges = [x for x in edgeList if x in conjugated_edges[j] or x[::-1] in conjugated_edges[j]] 
+                # reject_edges = list(set(edgeList).intersection(conjugated_edges[j])) + list(set([x[::-1] for x in edgeList]).intersection(conjugated_edges[j]))
+                reject_edges = list( (set(edgeList).intersection(conjEdgeList)).union((set([x[::-1] for x in edgeList]).intersection(conjEdgeList)) ))
+                # print('reject_edges', reject_edges)
+                # edgeList = [x for x in edgeList if x not in reject_edges] # non conjugated edges the node is bonded to
+                # edgeList = list(set(edgeList) - set(reject_edges))
+                # edgeList = [x for x in edgeList if x not in reject_edges and x[::-1] not in reject_edges]
+                edgeList = [x for x in edgeList if len(set([x]).intersection(reject_edges)) == 0 and  len(set([x[::-1]]).intersection(reject_edges)) == 0]
+                # print('edgeList after removal', edgeList)
+
+                bo_diff_list = [graph[x[0]][x[1]]['bo'] - 1 for x in edgeList] # minus 1 because one bond will be sigma bond (we want the pi bond)
+                # print('bo_diff_list', bo_diff_list)
+                non_conj_pi_elec = sum(bo_diff_list)
+                # print('non_conj_pi_elec', non_conj_pi_elec)
+
+                # graph.nodes[n]['pi'] = piELec - non_conj_pi_elec
+                tupleList.append((n, piELec - non_conj_pi_elec))
+
+            else:
+                # graph.nodes[n]['pi'] = piELec # tells us the number of pi electrons per atom, but doesn't distinguish between conjugated vs. non-conjugated systems
+                tupleList.append((n, piELec))
+    
+    return tupleList
+    

@@ -6,6 +6,7 @@ import networkx as nx
 from itertools import combinations
 from itertools import chain
 from itertools import product
+import multiprocessing as mp
 import time
 
 def hybridisation2(graph, proxMatrix, tol=0.003):
@@ -43,12 +44,13 @@ def hybridisation2(graph, proxMatrix, tol=0.003):
             if bo != 0:
                 if len(set([(nodeNumber, j+1), (j+1, nodeNumber)]).intersection(edgeAttr)) == 0:
                     edgeAttr[(nodeNumber, j+1)] = {'bo': bo}
-                    bondElec = bondElec + 2 * bo
-                    bondED = bondED + 1
+                bondElec = bondElec + 2 * bo
+                bondED = bondED + 1
         valElec = load_data.get_valence(graph.nodes[nodeNumber]['element'])
         elecDom = math.ceil(bondED + 0.5 * (valElec - 0.5 * bondElec - graph.nodes[nodeNumber]['charge'])) 
         # elecDom = round(bondED + 0.5 * (valElec - 0.5 * bondElec - graph.nodes[nodeNumber]['charge'])) 
         # print('elecDom', elecDom)
+
         graph.nodes[nodeNumber]['ed'] = elecDom
     # print(edgeAttr)
 
@@ -149,27 +151,22 @@ def conjugate_region(graph): # returns set of nodes(atoms) whose electrons are c
     connected_nodes = [x for x in nx.connected_components(sg)]
     # print('connected_nodes', connected_nodes)
     for components in connected_nodes:
-
         nodeList = list(components)
+        cnodesList = [x for x in nodeList if graph.nodes[x]['element'] == 'C']
         # print('connected nodeList', nodeList)
         # problematic nodes only accounts for allenes
         problematic_nodes = [] # list of nodes which contain double bonds on either side of it, scenario 1. one conjugated, the other isn't or 2. both are invovled in conjugation but are not in the same conjugation system
         # pnDict = {}
-        for node in nodeList:
+        for node in cnodesList:
             # print('node', node)
             neighbourList = [x for x in sg.neighbors(node)]
             # print('neighbourList', neighbourList)
-            combList = combinations(neighbourList, 2) # comparing two adjacent bonds
 
-            for comb in list(combList):
-                # print('comb', comb)
-                boList = [graph[node][comb[0]]['bo'], graph[node][comb[1]]['bo']]
-                elemList = [graph.nodes[comb[0]]['element'], graph.nodes[comb[1]]['element']]
-                # print('boList', boList)
-
-                if boList[0] >=2 and boList[1] >= 2 and elemList[0] == 'C' and elemList[1] == 'C': # problem here
-                    # print('problemmm')
-                    problematic_nodes.append(node)
+            boList = np.array([graph[node][x]['bo'] for x in neighbourList])
+            elemList = [graph.nodes[x]['element'] for x in neighbourList]
+            indList = np.where(boList == 2)[0]
+            if indList.size >= 2 and len(np.where(np.array([elemList[i] for i in indList]) == 'C')[0]) >= 2:
+                problematic_nodes.append(node)
 
         # print('problematic_nodes', problematic_nodes)
 
@@ -211,7 +208,7 @@ def conjugate_region(graph): # returns set of nodes(atoms) whose electrons are c
     #         # print(graph[edge[0]][edge[1]])
     #         graph[edge[0]][edge[1]]['conjugated'] = 'yes'
     for e in [x for x in graph.edges]:
-        if e in miscellaneous.flatten(conjugated_edges):
+        if e in miscellaneous.flatten(conjugated_edges) or e[::-1] in miscellaneous.flatten(conjugated_edges):
             graph[e[0]][e[1]]['conjugated'] = 'yes'
         else:
             graph[e[0]][e[1]]['conjugated'] = 'no'
@@ -221,39 +218,15 @@ def update_graph_pi(graph): # adds the no. of pi electrons (participating in con
     t1 = time.process_time()
     conjugated_nodes, conjugated_edges, graph = conjugate_region(graph)
     print('     obtaining conjugate region time: ', time.process_time() - t1)
-    # print('conjugated_nodes', conjugated_nodes)
-    # print('conjugated_edges', conjugated_edges)
     t2 = time.process_time()
-    for j, connections in enumerate(conjugated_nodes): 
-        # print([x for x in connections])
-        for i, n in enumerate([x for x in connections]):
-            # print(n, graph.nodes[n]['element'])
-            valence = load_data.get_valence(graph.nodes[n]['element'])
-            # print('valence', valence)
-            # sigmaBonds = len([x for x in graph.neighbors(n)]) # number of sigma bonds
-            sigmaBonds = graph.degree[n]
-            # print('sigmaBonds', sigmaBonds)
-            elecDom = graph.nodes[n]['ed']
-            # print('elecDom', elecDom)
-            piELec = valence - sigmaBonds - 2 * (elecDom - sigmaBonds)- graph.nodes[n]['charge'] # gives the number of pi electrons in the conjugated system, formula is essentially FC = V - N - B/2           
-            if i == 0 or i == len([x for x in connections]) - 1:
-                # need to check for the fact that the atom is connected to other pi systems not part of the conjugated system or separate conjugated systems
-                edgeList = get_edges_of_node(n, [x for x in graph.edges if graph[x[0]][x[1]]['bo'] >= 2]) #edges the node is part of which is double bond or triple
-                # reject_edges = [x for x in edgeList if x in conjugated_edges[j] or x[::-1] in conjugated_edges[j]] 
-                reject_edges = list(set(edgeList).intersection(conjugated_edges[j]))
-                # edgeList = [x for x in edgeList if x not in reject_edges] # non conjugated edges the node is bonded to
-                edgeList = list(set(edgeList) - set(reject_edges))
-                # print('edgeList', edgeList)
+    pool = mp.Pool(mp.cpu_count())
+    node_pi_list = pool.starmap_async(miscellaneous.get_pi_elec, [(conjugated_nodes[x], conjugated_edges[x], graph) for x in range(len(conjugated_edges)) ]).get()
+    pool.close()
+    # print(node_pi_list)
+    node_pi_list = list(set(miscellaneous.flatten(node_pi_list)))
 
-                bo_diff_list = [graph[x[0]][x[1]]['bo'] - 1 for x in edgeList] # minus 1 because one bond will be sigma bond (we want the pi bond)
-                # print('bo_diff_list', bo_diff_list)
-                non_conj_pi_elec = sum(bo_diff_list)
-                # print('non_conj_pi_elec', non_conj_pi_elec)
-
-                graph.nodes[n]['pi'] = piELec - non_conj_pi_elec
-
-            else:
-                graph.nodes[n]['pi'] = piELec # tells us the number of pi electrons per atom, but doesn't distinguish between conjugated vs. non-conjugated systems
+    for node_pi in node_pi_list:
+        graph.nodes[node_pi[0]]['pi'] = node_pi[1]
 
     print('     evaluating pi electrons: ', time.process_time() - t2)
     return graph, conjugated_nodes, conjugated_edges
