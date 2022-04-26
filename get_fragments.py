@@ -43,7 +43,7 @@ G = boxing.box_classification(coordinates, G, nodeList) # d parameter goes at th
 print('boxing.box_classification time: ', time.process_time() - t2)
 
 t1 = time.process_time()
-G, conjugated_edges = graph_characterisation.main(G, coordinates)
+G, conjugated_edges, proxMatrix = graph_characterisation.main(G, coordinates)
 print('graph_characterisation time: ', time.process_time() - t1)
 
 t3 = time.process_time()
@@ -139,3 +139,10 @@ elapsed_time = time.process_time() - t
 print('penalty time: ', elapsed_time)
 final_time = time.process_time() - t1
 print('total time: ', final_time)
+
+t8 = time.process_time()
+minAtomNo = np.random.randint(low=5, high=15, size=1)[0]
+betalist = [1] * 8
+total_penalty = calculate_penalty.full_penalty(atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo)
+print('total_penalty', total_penalty)
+print('total penalty time', time.process_time() - t8)

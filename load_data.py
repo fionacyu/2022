@@ -67,7 +67,7 @@ def get_bond_order(atom1, atom2, dist, tol):
     else:
         print('this program only handles the elements H, B, C, N, O, F, P, S, Cl, Br and I')
         sys.exit()
-        
+
 def get_valence(elem):
     valence = {'H': 1,
     'B': 3,
@@ -83,11 +83,8 @@ def get_valence(elem):
     val = valence[elem]
     return val
 
-
-def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for volume representation 
-    # uses formula provided by https://pubs.acs.org/doi/full/10.1021/ci800315d (ShaEP)
-
-    # vdw radii provided by Bondi
+def get_radii(atom):
+        # vdw radii provided by Bondi
     radii = {"H"  : 1.20,
          "He" : 1.40,
          "C"  : 1.70,
@@ -108,6 +105,12 @@ def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for vo
          "I"  : 1.98,
          "Xe" : 2.16}
     
+    return radii[atom]
+
+
+def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for volume representation 
+    # uses formula provided by https://pubs.acs.org/doi/full/10.1021/ci800315d (ShaEP)
+    
     nodeList = list(graph.nodes)
 
     # different atoms
@@ -121,13 +124,13 @@ def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for vo
         sortedPair = sorted(pair)
         dist = proxMatrix[sortedPair[1]-1, sortedPair[0]-1] # requires sorting because only the lower triangular elements in the proximity matrix are populated
 
-        alpha1 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * radii[atom1]**3), 2/3) # these are the decay factors
-        alpha2 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * radii[atom2]**3), 2/3) # 2√2 is taken to be the amplitude of the Gaussian
+        alpha1 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * get_radii(atom1)**3), 2/3) # these are the decay factors
+        alpha2 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * get_radii(atom2)**3), 2/3) # 2√2 is taken to be the amplitude of the Gaussian
 
         incVol = 8 * math.exp( -1 * (alpha1 * alpha2 * dist**2)/(alpha1 + alpha2)) * pow(math.pi/(alpha1 + alpha2), 3/2) # incremental volume
         pairVol = pairVol + (2 * incVol)
     
-    del incVol # resetting variable
+    # del incVol # resetting variable
 
     # same atoms
     sameVol = 0 
@@ -136,7 +139,7 @@ def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for vo
     for item in nodeCount:
         atom = item[0]
         count = item[1]
-        alpha = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * radii[atom]**3), 2/3)
+        alpha = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * get_radii(atom)**3), 2/3)
 
         incVol = 8 * pow(math.pi/(2 * alpha), 3/2)
         sameVol = sameVol + (count * incVol)
@@ -144,4 +147,3 @@ def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for vo
     volume = pairVol + sameVol
 
     return volume
-       

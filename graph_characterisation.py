@@ -255,4 +255,4 @@ def main(graph, coordinates):
     graph, _, conjugated_edges = update_graph_pi(graph) # adds pi electrons (participating in conjugation) as node attribute, retrieves the edges involved in a conjugated system
     print('     update graph pi time: ', time.process_time() - t4)
 
-    return graph, conjugated_edges#, small_aromatic_cycles#, cycle_edge_list
+    return graph, conjugated_edges, matrix#, small_aromatic_cycles#, cycle_edge_list
