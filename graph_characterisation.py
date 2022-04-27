@@ -175,9 +175,10 @@ def conjugate_region(graph): # returns set of nodes(atoms) whose electrons are c
             conjugated_nodes.append(components)
         
         else: # applicable to allenes (chain and cyclic)
-            terminal_nodes = [x for x in nodeList if sg.degree[x] == 1]
+            terminal_nodes = [x for x in nodeList if sg.degree[x] == 1 and graph.nodes[x]['element'] == 'C']
             # print(terminal_nodes)
             pnode_tnode_comb_list = list(product(problematic_nodes, terminal_nodes))
+            # print('pnode_tnode_comb_list', pnode_tnode_comb_list)
             for comb in pnode_tnode_comb_list:
                 # print('comb', comb)
                 pnode, tnode = comb[0], comb[1]

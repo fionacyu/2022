@@ -5,6 +5,7 @@ import hyperconj
 import aromaticity
 import rings
 import boxing
+import optimize
 import argparse
 import networkx as nx
 import numpy as np
@@ -14,20 +15,23 @@ import multiprocessing as mp
 mp.set_start_method('fork')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--xyz', required=True) # provide xyz file
-parser.add_argument('--charges', required=False) # provide file with charges of each atom, if not provided, assumes the atoms are neutral
+parser.add_argument('--input', required=True)
+# parser.add_argument('--xyz', required=True) # provide xyz file
+# parser.add_argument('--charges', required=False) # provide file with charges of each atom, if not provided, assumes the atoms are neutral
 args = parser.parse_args()
-xyzFile = args.xyz
-
+# xyzFile = args.xyz
+inputPath = args.input
+xyzFile, chargefile, minAtomNo = load_data.read_input(inputPath)
 # if charge file is supplied
 
 t1 = time.process_time()
 
-if args.charges:
-    chargeFile = args.charges
-    atoms, coordinates, nodeList = load_data.read_xyz(xyzFile, chargeFile)
-else:
+if not chargefile:
+#     chargeFile = args.charges
     atoms, coordinates, nodeList = load_data.read_xyz(xyzFile)
+#     atoms, coordinates, nodeList = load_data.read_xyz(xyzFile, chargeFile)
+else:
+    atoms, coordinates, nodeList = load_data.read_xyz(xyzFile, chargefile)
 
 # print(coordinates)
 # edges_to_cut = input("edges to cut (separated by space, e.g. 2,1 15,16 ...): ")
@@ -93,17 +97,23 @@ t = time.process_time()
 # penalty
 conj_penalty = calculate_penalty.conjugation_penalty(G, [x for x in edges_to_cut_list], conjugated_edges)
 print('conj_penalty', conj_penalty)
+print('conj_penalty time', time.process_time() - t)
 # aromaticity_penalty = calculate_penalty.aromaticity_penalty(G, [x for x in edges_to_cut_list])
 # print('aromaticity_penalty', aromaticity_penalty)
+tbo = time.process_time()
 bo_penalty = calculate_penalty.bond_order_penalty(G, [x for x in edges_to_cut_list])
 print('bond order penalty', bo_penalty)
+print('bo_penalty time', time.process_time() - tbo)
 
+tbranch = time.process_time()
 branch_penalty = calculate_penalty.branching_penalty(G, [x for x in edges_to_cut_list])
 print('branch_penalty', branch_penalty)
+print('branch_penalty time', time.process_time() - tbranch)
 
+thybrid = time.process_time()
 hybrid_penalty = calculate_penalty.hybridisation_penalty(G, [x for x in edges_to_cut_list])
 print('hybrid_penalty', hybrid_penalty)
-
+print('hybrid_penalty time', time.process_time() - thybrid)
 
 
 # print('donors')
@@ -120,29 +130,37 @@ print('hybrid_penalty', hybrid_penalty)
 #     print('nodes', acceptorDict[k].nodes)
 #     print('edges', acceptorDict[k].edges)
 #     print('terminal_nodes', acceptorDict[k].terminal_nodes)
-
-hyperconj_penalty = calculate_penalty.hyperconjugation_penalty(G, donorDict, acceptorDict, connectionDict, [x for x in edges_to_cut_list])
+thyper = time.process_time()
+hyperconj_penalty = calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, [x for x in edges_to_cut_list])
 print('hyperconjugation_penalty', hyperconj_penalty)
-# print(donorList)
+print('hyperconjugation_penalty time', time.process_time() - thyper)
 
-
+taroma = time.process_time()
 aromatic_penalty = calculate_penalty.aromaticity_penalty(G, aromaticDict, [x for x in edges_to_cut_list])
 print('aromatic_penalty', aromatic_penalty)
+print('aromatic_penalty time', time.process_time() - taroma)
 # for k,v in connectionDict.items():
 #     print(k)
 #     print('simple path edges: ', connectionDict[k].simple_paths)
 #     print('bond separation: ', connectionDict[k].bond_separation)
-
+tring = time.process_time()
 ring_penalty = calculate_penalty.ring_penalty(G, cycleDict, edges_to_cut_list)
 print('ring_penalty', ring_penalty)
+print('ring penalty time', time.process_time() - tring)
 elapsed_time = time.process_time() - t
 print('penalty time: ', elapsed_time)
 final_time = time.process_time() - t1
 print('total time: ', final_time)
 
 t8 = time.process_time()
-minAtomNo = np.random.randint(low=5, high=15, size=1)[0]
-betalist = [1] * 8
+# minAtomNo = np.random.randint(low=5, high=15, size=1)[0]
+betalist = [1,1,1.3,1,1,1.6,1.6,0.15]
 total_penalty = calculate_penalty.full_penalty(atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo)
 print('total_penalty', total_penalty)
 print('total penalty time', time.process_time() - t8)
+
+feasible_edges = optimize.get_feasible_edges(G)
+dim = len(feasible_edges)
+pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo,dim)
+print('pos', pos)
+print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))

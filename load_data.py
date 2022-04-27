@@ -5,6 +5,22 @@ import math
 import collections
 from itertools import combinations
 
+def read_input(inputPath):
+    with open(inputPath, 'r+') as f:
+        info = f.readlines()
+        for line in info:
+            category, data = line.split()
+            if 'coordinates' == category:
+                xyzFile = data
+            elif 'charges' == category:
+                chargefile = data
+            elif 'fragSize' == category:
+                minAtomNo = float(data)
+    try:
+        return xyzFile, chargefile, minAtomNo
+    except NameError:
+        return xyzFile, None, minAtomNo
+
 def read_xyz(xyzFile, chargefile=False):
     if chargefile:
         chargeList = np.genfromtxt(chargefile, dtype='int')[:,1]

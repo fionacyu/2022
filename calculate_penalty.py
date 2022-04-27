@@ -1,3 +1,4 @@
+import optimize
 import load_data
 from cmath import cos, exp
 import miscellaneous
@@ -17,10 +18,10 @@ def bond_order_penalty(graph, edges_to_cut_list):
 
 def branching_penalty(graph, edges_to_cut_list):
     penalty = 0
-    for edges in edges_to_cut_list:
-        if graph[edges[0]][edges[1]]['bo'] == 1: # only accounting for alkane branching
-            nodeList = [x for x in graph.neighbors(edges[0]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C'] + [x for x in graph.neighbors(edges[1]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C']
-            penalty += len(nodeList) # corresponds to the number of branching interactions lost due to edges being cut
+    for edges in [e for e in edges_to_cut_list if graph[e[0]][e[1]]['bo'] == 1]:
+        # if graph[edges[0]][edges[1]]['bo'] == 1: # only accounting for alkane branching
+        nodeList = [x for x in graph.neighbors(edges[0]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C'] + [x for x in graph.neighbors(edges[1]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C']
+        penalty += len(nodeList) # corresponds to the number of branching interactions lost due to edges being cut
     return penalty
 
 def hybridisation_penalty(graph, edges_to_cut_list): # fix this
@@ -29,6 +30,7 @@ def hybridisation_penalty(graph, edges_to_cut_list): # fix this
     nodeList = list(set(chain(*influential_edges)))
     for node in nodeList:
         edges = [e for e in influential_edges if node in e]
+        # edges = miscellaneous.node_in_edgelist(influential_edges, node)
         boList = [graph[e[0]][e[1]]['bo'] for e in edges]
         deltaboList = [x - 1 for x in boList]
         penalty += sum(deltaboList)
@@ -38,9 +40,6 @@ def hybridisation_penalty(graph, edges_to_cut_list): # fix this
 def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
     # try:
     edges_of_interest = [e for e in edges_to_cut_list if graph[e[0]][e[1]]['conjugated'] == 'yes']
-    # print('edges_of_interest', edges_of_interest)
-    # except KeyError:
-    #     return 0
     if len(edges_of_interest) == 0:
         return 0
 
@@ -99,12 +98,10 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
     return round(penalty,4)
 
 
-def hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edges_to_cut_list):
+def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list):
     if len(connectionDict) == 0:
         return 0
     
-    # affected_connections = [connection for connection in connectionDict if len(set([graph.nodes[n]['box'] for n in set(miscellaneous.flatten(edges_to_cut_list)) ]).intersection(donorDict[connection[0]].boxLabelList + acceptorDict[connection[1]].boxLabelList) )]
-
     # penalty = 0
     # for connection in connectionDict:
     #     donor = connection[0]
@@ -157,9 +154,9 @@ def hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edg
     #         connection_penalty = 1/connectionDict[connection].bond_separation * ((sum(dsList)/len(dsList)) + sum(asList)/len(asList))
     #         # print('connection_penalty', connection_penalty)
     #         penalty += connection_penalty
-    
+    # print('len of connectionDict', len(connectionDict))
     pool = mp.Pool(mp.cpu_count())
-    penalty = sum(pool.starmap_async(miscellaneous.hyperconj_penalty_connection, [(graph, connection, connectionDict, donorDict, acceptorDict, edges_to_cut_list) for connection in connectionDict]).get())
+    penalty = sum(pool.starmap_async(miscellaneous.hyperconj_penalty_connection, [( connection, connectionDict, donorDict, acceptorDict, edges_to_cut_list) for connection in connectionDict]).get())
     pool.close()
 
 
@@ -235,8 +232,18 @@ def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
 
 
 def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
-    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), branching_penalty(graph, edges_to_cut_list), hybridisation_penalty(graph, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(graph, donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), branching_penalty(graph, edges_to_cut_list), hybridisation_penalty(graph, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
+    beta_values = np.array(betalist)
+
+    total_penalty = np.dot(penalty_list, beta_values)
+    return total_penalty
+
+def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
+    edges_to_cut_list = optimize.convert_bvector_edges(x, feasible_edges)
+    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), branching_penalty(graph, edges_to_cut_list), hybridisation_penalty(graph, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+    penalty_list = np.array(penalty_list)
+    print('penalty_list:', penalty_list)
     beta_values = np.array(betalist)
 
     total_penalty = np.dot(penalty_list, beta_values)

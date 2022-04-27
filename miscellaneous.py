@@ -3,7 +3,8 @@ import load_data
 import graph_characterisation
 from itertools import chain
 import networkx as nx
-
+import numpy as np
+import time
 
 def flatten(t):
     return [item for sublist in t for item in sublist]
@@ -26,7 +27,8 @@ def donor_acceptor_of_edge(dictionary, edge):
     return daList
 
 def donor_acceptor_nodes(da_object, nodeList): # tells which nodes belong to the donor or acceptor
-    da_nodes = [x for x in nodeList if x in da_object.nodes]
+    # da_nodes = [x for x in nodeList if x in da_object.nodes]
+    da_nodes = list(set(nodeList).intersection(da_object.nodes))
     return da_nodes
 
 def index_of_cycle_list(cycle_list, edge):
@@ -113,18 +115,24 @@ def get_pi_elec(conjNodeList, conjEdgeList, graph):
     
     return tupleList
     
-def hyperconj_penalty_connection(graph, connection, connectionDict, donorDict, acceptorDict, edges_to_cut_list):
+def hyperconj_penalty_connection(connection, connectionDict, donorDict, acceptorDict, edges_to_cut_list):
     donor = connection[0]
     acceptor = connection[1]
 
-    boxLabelList = donorDict[donor].boxLabelList + acceptorDict[acceptor].boxLabelList
+    # boxLabelList = donorDict[donor].boxLabelList + acceptorDict[acceptor].boxLabelList
     # edges in the same box or neighbouring boxes as the donors/acceptors
-    edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0 ]
-    influential_edges = [e for e in edgesBoxes if (e in connectionDict[connection].simple_paths or e in donorDict[donor].edges or e in acceptorDict[acceptor].edges) or (e[::-1] in connectionDict[connection].simple_paths or e[::-1] in donorDict[donor].edges or e[::-1] in acceptorDict[acceptor].edges)]
+    # t1 = time.process_time()
+    # edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0 ]
+    # print('edgeBoxes time', time.process_time() - t1)
+
+    # tt = time.process_time()
+    # influential_edges = [e for e in edges_to_cut_list if (e in connectionDict[connection].simple_paths or e in donorDict[donor].edges or e in acceptorDict[acceptor].edges) or (e[::-1] in connectionDict[connection].simple_paths or e[::-1] in donorDict[donor].edges or e[::-1] in acceptorDict[acceptor].edges)]
+    influential_edges = list( (set(edges_to_cut_list).intersection(connectionDict[connection].simple_paths)).union((set(edges_to_cut_list).intersection(donorDict[donor].edges))).union((set(edges_to_cut_list).intersection(acceptorDict[acceptor].edges))).union((set([e[::-1] for e in edges_to_cut_list]).intersection(connectionDict[connection].simple_paths))).union(set([e[::-1] for e in edges_to_cut_list]).intersection(donorDict[donor].edges)).union(set([e[::-1] for e in edges_to_cut_list]).intersection(acceptorDict[acceptor].edges)) )
+    # print('influential edges time', time.process_time() - t1)
     #these are the edges that will impact the donor-acceptor pair
     if influential_edges:
         # print(connection)
-
+        # t2 = time.process_time()
         da_graph = nx.Graph()
         nodeList = donorDict[donor].nodes + acceptorDict[acceptor].nodes + [x for x in set(chain(*connectionDict[connection].simple_paths))]
         nodeList = list(dict.fromkeys(nodeList)) # remove duplicates that arise from connection edges which comprise terminal nodes of donors and acceptors
@@ -132,14 +140,19 @@ def hyperconj_penalty_connection(graph, connection, connectionDict, donorDict, a
         # print('edgeList: ', edgeList)
         rejected_edges = [e for e in edgeList if e in influential_edges or e[::-1] in influential_edges]
         # edgeList = [e for e in edgeList if e not in rejected_edges] # remove influential edges/ edges to cut
+        # print('reject_edges', rejected_edges)
         edgeList = list(set(edgeList) - set(rejected_edges))
         da_graph.add_nodes_from(nodeList)
         da_graph.add_edges_from(edgeList)
+        # print('defining hyper graph time:', time.process_time() - t2)
 
+        # t3 = time.process_time()
         connected_comp_list = [x for x in nx.connected_components(da_graph)] # gives list of nodes which are connected to each other
+        # print('defining connected comp time: ', time.process_time() - t3)
         # print('connected_comp_list', connected_comp_list)
 
-        dsList, asList = [], []
+        # t4 = time.process_time()
+        dsList, asList = np.array([]), np.array([])
         for cc in connected_comp_list:
             cc_nodes = [x for x in cc]
             dnodes = donor_acceptor_nodes(donorDict[donor], cc_nodes)
@@ -152,17 +165,20 @@ def hyperconj_penalty_connection(graph, connection, connectionDict, donorDict, a
                 donor_electrons = sum([donorDict[donor].node_electrons[x] for x in dnodes])
                 da_node_number = len(dnodes) + len(anodes)
                 # print('ds', donor_electrons/da_node_number)
-                dsList.append(donor_electrons/da_node_number)
+                # dsList.append(donor_electrons/da_node_number)
+                dsList = np.append(dsList, donor_electrons/da_node_number)
             
             if anodes:
                 donor_electrons = sum([donorDict[donor].node_electrons[x] for x in dnodes])
                 da_node_number = len(dnodes) + len(anodes)
                 # print('as', -1 * donor_electrons/da_node_number)
-                asList.append(-1 * donor_electrons/da_node_number)
+                # asList.append(-1 * donor_electrons/da_node_number)
+                asList = np.append(asList, -1 * donor_electrons/da_node_number)
         
 
-        connection_penalty = 1/connectionDict[connection].bond_separation * ((sum(dsList)/len(dsList)) + sum(asList)/len(asList))
+        connection_penalty = 1/connectionDict[connection].bond_separation * (np.average(dsList) + np.average(asList))
         # print('connection_penalty', connection_penalty)
+        # print('cc for loop time', time.process_time() - t4)
         return connection_penalty
     else:
         return 0 
@@ -184,6 +200,11 @@ def aromaticity_penalty_para(graph, asys, aromaticDict, edges_to_cut_list):
     # inc_penalty = aromaticDict[asys].size - (sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList))
     inc_penalty = sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList)
     return inc_penalty
+
+# def node_in_edgelist(edgeList, node):
+#     indList = np.where(np.array(edgeList) == node)
+#     return [tuple(x) for x in np.take(np.array(edgeList), indList[0], axis=0)]
+
 
 # def conj_penalty_para(graph, system, edges_of_interest):
 #     nodeList = set(chain(*system))
