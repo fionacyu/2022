@@ -83,38 +83,38 @@ print('conjugated_edges', conjugated_edges)
 # for node in list(G.nodes):
 #     print(node, G.nodes[node])
 
-nonHedges = [e for e in G.edges if G.nodes[e[0]]['element'] != 'H' and G.nodes[e[1]]['element'] != 'H']
-np.random.RandomState(100)
+# nonHedges = [e for e in G.edges if G.nodes[e[0]]['element'] != 'H' and G.nodes[e[1]]['element'] != 'H']
+# np.random.RandomState(100)
 # binaryList = np.random.randint(2,size=len(nonHedges))
 
 # edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
-edges_to_cut_list = [(2,3)]
-# print('edges_to_cut_list', edges_to_cut_list)
-# edges_to_cut_list = [(2,3), (4,5)]
+# # edges_to_cut_list = [(2,3)]
+# # print('edges_to_cut_list', edges_to_cut_list)
+# # edges_to_cut_list = [(2,3), (4,5)]
 
 
-# # print('minimum_cycle_basis', [c for c in rings.minimum_cycle_basis(G)])
-t = time.process_time()
-# # penalty
-conj_penalty = calculate_penalty.conjugation_penalty(G, [x for x in edges_to_cut_list], conjugated_edges)
-print('conj_penalty', conj_penalty)
-print('conj_penalty time', time.process_time() - t)
-# aromaticity_penalty = calculate_penalty.aromaticity_penalty(G, [x for x in edges_to_cut_list])
-# print('aromaticity_penalty', aromaticity_penalty)
-tbo = time.process_time()
-bo_penalty = calculate_penalty.bond_order_penalty(G, [x for x in edges_to_cut_list])
-print('bond order penalty', bo_penalty)
-print('bo_penalty time', time.process_time() - tbo)
+# # # print('minimum_cycle_basis', [c for c in rings.minimum_cycle_basis(G)])
+# t = time.process_time()
+# # # penalty
+# conj_penalty = calculate_penalty.conjugation_penalty(G, [x for x in edges_to_cut_list], conjugated_edges)
+# print('conj_penalty', conj_penalty)
+# print('conj_penalty time', time.process_time() - t)
+# # aromaticity_penalty = calculate_penalty.aromaticity_penalty(G, [x for x in edges_to_cut_list])
+# # print('aromaticity_penalty', aromaticity_penalty)
+# tbo = time.process_time()
+# bo_penalty = calculate_penalty.bond_order_penalty(G, [x for x in edges_to_cut_list])
+# print('bond order penalty', bo_penalty)
+# print('bo_penalty time', time.process_time() - tbo)
 
-tbranch = time.process_time()
-branch_penalty = calculate_penalty.branching_penalty(G, [x for x in edges_to_cut_list])
-print('branch_penalty', branch_penalty)
-print('branch_penalty time', time.process_time() - tbranch)
+# tbranch = time.process_time()
+# branch_penalty = calculate_penalty.branching_penalty(G, [x for x in edges_to_cut_list])
+# print('branch_penalty', branch_penalty)
+# print('branch_penalty time', time.process_time() - tbranch)
 
-thybrid = time.process_time()
-hybrid_penalty = calculate_penalty.hybridisation_penalty(G, [x for x in edges_to_cut_list])
-print('hybrid_penalty', hybrid_penalty)
-print('hybrid_penalty time', time.process_time() - thybrid)
+# thybrid = time.process_time()
+# hybrid_penalty = calculate_penalty.hybridisation_penalty(G, [x for x in edges_to_cut_list])
+# print('hybrid_penalty', hybrid_penalty)
+# print('hybrid_penalty time', time.process_time() - thybrid)
 
 
 # # print('donors')
@@ -131,37 +131,37 @@ print('hybrid_penalty time', time.process_time() - thybrid)
 #     print('nodes', acceptorDict[k].nodes)
 #     print('edges', acceptorDict[k].edges)
 #     print('terminal_nodes', acceptorDict[k].terminal_nodes)
-thyper = time.process_time()
-hyperconj_penalty = calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, [x for x in edges_to_cut_list])
-print('hyperconjugation_penalty', hyperconj_penalty)
-print('hyperconjugation_penalty time', time.process_time() - thyper)
+# thyper = time.process_time()
+# hyperconj_penalty = calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, [x for x in edges_to_cut_list])
+# print('hyperconjugation_penalty', hyperconj_penalty)
+# print('hyperconjugation_penalty time', time.process_time() - thyper)
 
-taroma = time.process_time()
-aromatic_penalty = calculate_penalty.aromaticity_penalty(G, aromaticDict, [x for x in edges_to_cut_list])
-print('aromatic_penalty', aromatic_penalty)
-print('aromatic_penalty time', time.process_time() - taroma)
-# for k,v in connectionDict.items():
-#     print(k)
-#     print('simple path edges: ', connectionDict[k].simple_paths)
-#     print('bond separation: ', connectionDict[k].bond_separation)
-tring = time.process_time()
-ring_penalty = calculate_penalty.ring_penalty(G, cycleDict, edges_to_cut_list)
-print('ring_penalty', ring_penalty)
-print('ring penalty time', time.process_time() - tring)
-elapsed_time = time.process_time() - t
-print('penalty time: ', elapsed_time)
-final_time = time.process_time() - t1
-print('total time: ', final_time)
+# taroma = time.process_time()
+# aromatic_penalty = calculate_penalty.aromaticity_penalty(G, aromaticDict, [x for x in edges_to_cut_list])
+# print('aromatic_penalty', aromatic_penalty)
+# print('aromatic_penalty time', time.process_time() - taroma)
+# # for k,v in connectionDict.items():
+# #     print(k)
+# #     print('simple path edges: ', connectionDict[k].simple_paths)
+# #     print('bond separation: ', connectionDict[k].bond_separation)
+# tring = time.process_time()
+# ring_penalty = calculate_penalty.ring_penalty(G, cycleDict, edges_to_cut_list)
+# print('ring_penalty', ring_penalty)
+# print('ring penalty time', time.process_time() - tring)
+# elapsed_time = time.process_time() - t
+# print('penalty time: ', elapsed_time)
+# final_time = time.process_time() - t1
+# print('total time: ', final_time)
 
-t8 = time.process_time()
-# minAtomNo = np.random.randint(low=5, high=15, size=1)[0]
+# t8 = time.process_time()
+# # minAtomNo = np.random.randint(low=5, high=15, size=1)[0]
 betalist = [1,1,1.3,1,1,1.6,1.6,0.15]
-total_penalty = calculate_penalty.full_penalty(atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo)
-print('total_penalty', total_penalty)
-print('total penalty time', time.process_time() - t8)
+# total_penalty = calculate_penalty.full_penalty(atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo)
+# print('total_penalty', total_penalty)
+# print('total penalty time', time.process_time() - t8)
 
 feasible_edges = optimize.get_feasible_edges(G)
-print('feasible edges', feasible_edges)
+# print('feasible edges', feasible_edges)
 dim = len(feasible_edges)
 pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo,dim)
 # print('pos', pos)

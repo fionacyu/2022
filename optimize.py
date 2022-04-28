@@ -28,7 +28,7 @@ def convert_bvector_edges1(bvector2d, feasible_edges):
 
 def run_optimizer(atoms, graph, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo, dim):
     kwargs = {'feasible_edges': feasible_edges, 'atoms': atoms, 'graph': graph, 'conjugated_edges': conjugated_edges, 'donorDict': donorDict, 'acceptorDict': acceptorDict, 'connectionDict': connectionDict, 'aromaticDict': aromaticDict, 'cycleDict': cycleDict, 'betalist': betalist, 'proxMatrix': proxMatrix, 'minAtomNo': minAtomNo}
-    options = {'c1': 0.5, 'c2': 0.5, 'w': 0.9, 'k':7, 'p': 1}
-    optimizer = ps.discrete.binary.BinaryPSO(n_particles=8, dimensions=dim, options=options)
-    _, pos = optimizer.optimize(calculate_penalty.full_penalty_opt, iters=500, n_processes=None , **kwargs)
+    options = {'c1': 0.5, 'c2': 0.5, 'w': 0.9, 'k':mp.cpu_count()-1, 'p': 1}
+    optimizer = ps.discrete.binary.BinaryPSO(n_particles=mp.cpu_count(), dimensions=dim, options=options)
+    _, pos = optimizer.optimize(calculate_penalty.full_penalty_opt, iters=1000, n_processes=None , **kwargs)
     return pos

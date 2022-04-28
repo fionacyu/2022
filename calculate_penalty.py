@@ -105,62 +105,63 @@ def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_c
     if len(connectionDict) == 0:
         return 0
     
-    # penalty = 0
-    # for connection in connectionDict:
-    #     donor = connection[0]
-    #     acceptor = connection[1]
+    penalty = 0
+    for connection in connectionDict:
+        donor = connection[0]
+        acceptor = connection[1]
 
-    #     boxLabelList = donorDict[donor].boxLabelList + acceptorDict[acceptor].boxLabelList
-    #     # edges in the same box or neighbouring boxes as the donors/acceptors
-    #     edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0 ]
-    #     influential_edges = [e for e in edgesBoxes if (e in connectionDict[connection].simple_paths or e in donorDict[donor].edges or e in acceptorDict[acceptor].edges) or (e[::-1] in connectionDict[connection].simple_paths or e[::-1] in donorDict[donor].edges or e[::-1] in acceptorDict[acceptor].edges)]
-    #     #these are the edges that will impact the donor-acceptor pair
-    #     if influential_edges:
-    #         # print(connection)
+        # boxLabelList = donorDict[donor].boxLabelList + acceptorDict[acceptor].boxLabelList
+        # # edges in the same box or neighbouring boxes as the donors/acceptors
+        # edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0 ]
+        # influential_edges = [e for e in edgesBoxes if (e in connectionDict[connection].simple_paths or e in donorDict[donor].edges or e in acceptorDict[acceptor].edges) or (e[::-1] in connectionDict[connection].simple_paths or e[::-1] in donorDict[donor].edges or e[::-1] in acceptorDict[acceptor].edges)]
+        influential_edges = list( (set(edges_to_cut_list).intersection(connectionDict[connection].simple_paths)).union((set(edges_to_cut_list).intersection(donorDict[donor].edges))).union((set(edges_to_cut_list).intersection(acceptorDict[acceptor].edges))).union((set([e[::-1] for e in edges_to_cut_list]).intersection(connectionDict[connection].simple_paths))).union(set([e[::-1] for e in edges_to_cut_list]).intersection(donorDict[donor].edges)).union(set([e[::-1] for e in edges_to_cut_list]).intersection(acceptorDict[acceptor].edges)) )
+        #these are the edges that will impact the donor-acceptor pair
+        if influential_edges:
+            # print(connection)
 
-    #         da_graph = nx.Graph()
-    #         nodeList = donorDict[donor].nodes + acceptorDict[acceptor].nodes + [x for x in set(chain(*connectionDict[connection].simple_paths))]
-    #         nodeList = list(dict.fromkeys(nodeList)) # remove duplicates that arise from connection edges which comprise terminal nodes of donors and acceptors
-    #         edgeList = donorDict[donor].edges + acceptorDict[acceptor].edges + connectionDict[connection].simple_paths
-    #         # print('edgeList: ', edgeList)
-    #         rejected_edges = [e for e in edgeList if e in influential_edges or e[::-1] in influential_edges]
-    #         # edgeList = [e for e in edgeList if e not in rejected_edges] # remove influential edges/ edges to cut
-    #         edgeList = list(set(edgeList) - set(rejected_edges))
-    #         da_graph.add_nodes_from(nodeList)
-    #         da_graph.add_edges_from(edgeList)
+            da_graph = nx.Graph()
+            nodeList = donorDict[donor].nodes + acceptorDict[acceptor].nodes + [x for x in set(chain(*connectionDict[connection].simple_paths))]
+            nodeList = list(dict.fromkeys(nodeList)) # remove duplicates that arise from connection edges which comprise terminal nodes of donors and acceptors
+            edgeList = donorDict[donor].edges + acceptorDict[acceptor].edges + connectionDict[connection].simple_paths
+            # print('edgeList: ', edgeList)
+            rejected_edges = [e for e in edgeList if e in influential_edges or e[::-1] in influential_edges]
+            # edgeList = [e for e in edgeList if e not in rejected_edges] # remove influential edges/ edges to cut
+            edgeList = list(set(edgeList) - set(rejected_edges))
+            da_graph.add_nodes_from(nodeList)
+            da_graph.add_edges_from(edgeList)
 
-    #         connected_comp_list = [x for x in nx.connected_components(da_graph)] # gives list of nodes which are connected to each other
-    #         # print('connected_comp_list', connected_comp_list)
+            connected_comp_list = [x for x in nx.connected_components(da_graph)] # gives list of nodes which are connected to each other
+            # print('connected_comp_list', connected_comp_list)
 
-    #         dsList, asList = [], []
-    #         for cc in connected_comp_list:
-    #             cc_nodes = [x for x in cc]
-    #             dnodes = miscellaneous.donor_acceptor_nodes(donorDict[donor], cc_nodes)
-    #             anodes = miscellaneous.donor_acceptor_nodes(acceptorDict[acceptor], cc_nodes)
+            dsList, asList = np.array([]), np.array([])
+            for cc in connected_comp_list:
+                cc_nodes = [x for x in cc]
+                dnodes = miscellaneous.donor_acceptor_nodes(donorDict[donor], cc_nodes)
+                anodes = miscellaneous.donor_acceptor_nodes(acceptorDict[acceptor], cc_nodes)
 
-    #             # print('dnodes', dnodes)
-    #             # print('anodes', anodes)
+                # print('dnodes', dnodes)
+                # print('anodes', anodes)
 
-    #             if dnodes:
-    #                 donor_electrons = sum([donorDict[donor].node_electrons[x] for x in dnodes])
-    #                 da_node_number = len(dnodes) + len(anodes)
-    #                 # print('ds', donor_electrons/da_node_number)
-    #                 dsList.append(donor_electrons/da_node_number)
+                if dnodes:
+                    donor_electrons = sum([donorDict[donor].node_electrons[x] for x in dnodes])
+                    da_node_number = len(dnodes) + len(anodes)
+                    # print('ds', donor_electrons/da_node_number)
+                    dsList = np.append(dsList, donor_electrons/da_node_number)
                 
-    #             if anodes:
-    #                 donor_electrons = sum([donorDict[donor].node_electrons[x] for x in dnodes])
-    #                 da_node_number = len(dnodes) + len(anodes)
-    #                 # print('as', -1 * donor_electrons/da_node_number)
-    #                 asList.append(-1 * donor_electrons/da_node_number)
+                if anodes:
+                    donor_electrons = sum([donorDict[donor].node_electrons[x] for x in dnodes])
+                    da_node_number = len(dnodes) + len(anodes)
+                    # print('as', -1 * donor_electrons/da_node_number)
+                    asList = np.append(asList, -1 * donor_electrons/da_node_number)
             
 
-    #         connection_penalty = 1/connectionDict[connection].bond_separation * ((sum(dsList)/len(dsList)) + sum(asList)/len(asList))
-    #         # print('connection_penalty', connection_penalty)
-    #         penalty += connection_penalty
+            connection_penalty = connection_penalty = 1/connectionDict[connection].bond_separation * (np.average(dsList) + np.average(asList))
+            # print('connection_penalty', connection_penalty)
+            penalty += connection_penalty
     # print('len of connectionDict', len(connectionDict))
-    pool = mp.Pool(mp.cpu_count())
-    penalty = sum(pool.starmap_async(miscellaneous.hyperconj_penalty_connection, [( connection, connectionDict, donorDict, acceptorDict, edges_to_cut_list) for connection in connectionDict]).get())
-    pool.close()
+    # pool = mp.Pool(mp.cpu_count())
+    # penalty = sum(pool.starmap_async(miscellaneous.hyperconj_penalty_connection, [( connection, connectionDict, donorDict, acceptorDict, edges_to_cut_list) for connection in connectionDict]).get())
+    # pool.close()
 
 
     return round(penalty,4)
@@ -170,28 +171,28 @@ def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
     if len(aromaticDict) == 0:
         return 0
 
-    # penalty = 0 
-    # for asys in aromaticDict:
-    #     #box edges go here
-    #     boxLabelList = aromaticDict[asys].boxLabelList
-    #     edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0 ]
+    penalty = 0 
+    for asys in aromaticDict:
+        #box edges go here
+        boxLabelList = aromaticDict[asys].boxLabelList
+        edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0 ]
 
-    #     influential_edges = [e for e in edgesBoxes if e in miscellaneous.flatten(aromaticDict[asys].cycle_list) and e not in aromaticDict[asys].bridging_edges] # doesn't include bridging edges
-    #     bedgeList = [e for e in edgesBoxes if e in miscellaneous.flatten(aromaticDict[asys].cycle_list) and e in aromaticDict[asys].bridging_edges] # bridging edges only
+        influential_edges = [e for e in edgesBoxes if e in miscellaneous.flatten(aromaticDict[asys].cycle_list) and e not in aromaticDict[asys].bridging_edges] # doesn't include bridging edges
+        bedgeList = [e for e in edgesBoxes if e in miscellaneous.flatten(aromaticDict[asys].cycle_list) and e in aromaticDict[asys].bridging_edges] # bridging edges only
 
-    #     nonbe_cycle_ind_list = miscellaneous.flatten([miscellaneous.index_of_cycle_list(aromaticDict[asys].cycle_list, edge) for edge in influential_edges])
-    #     nonbe_cycle_ind_list = list(dict.fromkeys(nonbe_cycle_ind_list)) # get the unique values
-    #     be_cycle_ind_list = miscellaneous.flatten([miscellaneous.index_of_cycle_list(aromaticDict[asys].cycle_list, edge) for edge in bedgeList])
-    #     be_cycle_ind_list = list(dict.fromkeys(be_cycle_ind_list))
-    #     # nonbe_cycle_ind_list = [x for x in nonbe_cycle_ind_list if x not in be_cycle_ind_list]
-    #     nonbe_cycle_ind_list = list(set(nonbe_cycle_ind_list) - set(be_cycle_ind_list))
+        nonbe_cycle_ind_list = miscellaneous.flatten([miscellaneous.index_of_cycle_list(aromaticDict[asys].cycle_list, edge) for edge in influential_edges])
+        nonbe_cycle_ind_list = list(dict.fromkeys(nonbe_cycle_ind_list)) # get the unique values
+        be_cycle_ind_list = miscellaneous.flatten([miscellaneous.index_of_cycle_list(aromaticDict[asys].cycle_list, edge) for edge in bedgeList])
+        be_cycle_ind_list = list(dict.fromkeys(be_cycle_ind_list))
+        # nonbe_cycle_ind_list = [x for x in nonbe_cycle_ind_list if x not in be_cycle_ind_list]
+        nonbe_cycle_ind_list = list(set(nonbe_cycle_ind_list) - set(be_cycle_ind_list))
 
-    #     # inc_penalty = aromaticDict[asys].size - (sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList))
-    #     inc_penalty = sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList)
-    #     penalty += inc_penalty
-    pool = mp.Pool(mp.cpu_count())
-    penalty = sum(pool.starmap_async(miscellaneous.aromaticity_penalty_para, [(graph, asys, aromaticDict, edges_to_cut_list) for asys in aromaticDict] ).get() )
-    pool.close()
+        # inc_penalty = aromaticDict[asys].size - (sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList))
+        inc_penalty = sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList)
+        penalty += inc_penalty
+    # pool = mp.Pool(mp.cpu_count())
+    # penalty = sum(pool.starmap_async(miscellaneous.aromaticity_penalty_para, [(graph, asys, aromaticDict, edges_to_cut_list) for asys in aromaticDict] ).get() )
+    # pool.close()
 
     return penalty
 
@@ -248,17 +249,21 @@ def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDic
     edges_to_cut_list = optimize.convert_bvector_edges1(x, feasible_edges)
     # print('edges_to_cut_list', edges_to_cut_list)
     # print('x.shape[0]', x.shape[0])
-    penalty_lol = [[] for _ in range(x.shape[0])]
-    for i in range(x.shape[0]):
-        penalty_lol[i].extend([bond_order_penalty(graph, edges_to_cut_list[i]), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list[i]), ring_penalty(graph, cycleDict, edges_to_cut_list[i]), branching_penalty(graph, edges_to_cut_list[i]), hybridisation_penalty(graph, edges_to_cut_list[i]), conjugation_penalty(graph, edges_to_cut_list[i], conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list[i]), volume_penalty(atoms, graph, edges_to_cut_list[i], proxMatrix, minAtomNo)])
+    # penalty_lol = [[] for _ in range(x.shape[0])]
+    # for i in range(x.shape[0]):
+    #     penalty_lol[i].extend([bond_order_penalty(graph, edges_to_cut_list[i]), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list[i]), ring_penalty(graph, cycleDict, edges_to_cut_list[i]), branching_penalty(graph, edges_to_cut_list[i]), hybridisation_penalty(graph, edges_to_cut_list[i]), conjugation_penalty(graph, edges_to_cut_list[i], conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list[i]), volume_penalty(atoms, graph, edges_to_cut_list[i], proxMatrix, minAtomNo)])
     # penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), branching_penalty(graph, edges_to_cut_list), hybridisation_penalty(graph, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     # penalty_list = np.array(penalty_list)
-    # print('penalty_list:', penalty_list)
-    # print('penalty_lol', penalty_lol)
-    beta_values = np.array(betalist)
+    # print('penalty_list:', penalty_list
+    pool = mp.Pool(mp.cpu_count())
+    penalty_list = pool.starmap_async(miscellaneous.full_penalty, [(atoms, graph, edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo) for edges in edges_to_cut_list]).get()
+    pool.close()
+    # print('penalty_list', penalty_list)
+    # beta_values = np.array(betalist)
 
     # print('***', [np.dot(np.array(penalty_lol[i]), beta_values) for i in range(x.shape[0])])
-    total_penalty = np.array([np.dot(np.array(penalty_lol[i]), beta_values) for i in range(x.shape[0])])
+    # total_penalty = np.array([np.dot(np.array(penalty_lol[i]), beta_values) for i in range(x.shape[0])])
+    # total_penalty = np.array([np.dot(np.array(penalty_lol[i]), beta_values) for i in range(x.shape[0])])
     # print('total_penalty', total_penalty)
-    return total_penalty
+    return penalty_list
     
