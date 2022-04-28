@@ -1,6 +1,7 @@
 import sys
 import load_data
 import graph_characterisation
+import calculate_penalty
 from itertools import chain
 import networkx as nx
 import numpy as np
@@ -237,3 +238,12 @@ def aromaticity_penalty_para(graph, asys, aromaticDict, edges_to_cut_list):
 #     average_sg_cs = sum(sg_cs_list) / len(sg_cs_list)
 #     # subsystem_cs_list.append(average_sg_cs)
 #     return average_sg_cs - average_cs
+
+# def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
+#     penalty_list = [calculate_penalty.bond_order_penalty(graph, edges_to_cut_list), calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.ring_penalty(graph, cycleDict, edges_to_cut_list), calculate_penalty.branching_penalty(graph, edges_to_cut_list), calculate_penalty.hybridisation_penalty(graph, edges_to_cut_list), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+#     penalty_list = np.array(penalty_list)
+#     # print('penalty_list:', penalty_list)
+#     beta_values = np.array(betalist)
+
+#     total_penalty = np.dot(penalty_list, beta_values)
+#     return total_penalty

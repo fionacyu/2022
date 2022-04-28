@@ -150,6 +150,7 @@ def conjugate_region(graph): # returns set of nodes(atoms) whose electrons are c
     conjugated_edges = []
     connected_nodes = [x for x in nx.connected_components(sg)]
     # print('connected_nodes', connected_nodes)
+    connected_nodes = [x for x in connected_nodes if len(x) > 2]
     for components in connected_nodes:
         nodeList = list(components)
         cnodesList = [x for x in nodeList if graph.nodes[x]['element'] == 'C']

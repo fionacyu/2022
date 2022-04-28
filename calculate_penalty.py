@@ -17,12 +17,15 @@ def bond_order_penalty(graph, edges_to_cut_list):
 
 
 def branching_penalty(graph, edges_to_cut_list):
-    penalty = 0
-    for edges in [e for e in edges_to_cut_list if graph[e[0]][e[1]]['bo'] == 1]:
+    eList = []
+    for edges in [e for e in edges_to_cut_list if graph.nodes[e[0]]['element'] == 'C' and graph.nodes[e[1]]['element'] == 'C' and graph.nodes[e[0]]['ed'] == 4 and graph.nodes[e[1]]['ed'] == 4]:# and graph[e[0]][e[1]]['bo'] == 1]:, by def the bo would be 1
         # if graph[edges[0]][edges[1]]['bo'] == 1: # only accounting for alkane branching
-        nodeList = [x for x in graph.neighbors(edges[0]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C'] + [x for x in graph.neighbors(edges[1]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C']
-        penalty += len(nodeList) # corresponds to the number of branching interactions lost due to edges being cut
-    return penalty
+        # nodeList = [x for x in graph.neighbors(edges[0]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C'] + [x for x in graph.neighbors(edges[1]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C']
+        branchIntList =  [frozenset((edges[1], x)) for x in graph.neighbors(edges[0]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C' and x != edges[1]] + [frozenset((edges[0], x)) for x in graph.neighbors(edges[1]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C' and x != edges[0]]
+        eList.extend(branchIntList)
+        # penalty += len(nodeList) # corresponds to the number of branching interactions lost due to edges being cut
+    # print('Counter(eList)', Counter(eList))
+    return len(Counter(eList))
 
 def hybridisation_penalty(graph, edges_to_cut_list): # fix this
     penalty = 0
@@ -234,18 +237,28 @@ def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
 def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
     penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), branching_penalty(graph, edges_to_cut_list), hybridisation_penalty(graph, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
+    # print('penalty_list:', penalty_list)
     beta_values = np.array(betalist)
 
     total_penalty = np.dot(penalty_list, beta_values)
     return total_penalty
 
 def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
-    edges_to_cut_list = optimize.convert_bvector_edges(x, feasible_edges)
-    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), branching_penalty(graph, edges_to_cut_list), hybridisation_penalty(graph, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
-    penalty_list = np.array(penalty_list)
-    print('penalty_list:', penalty_list)
+    # print('x: ', x)
+    edges_to_cut_list = optimize.convert_bvector_edges1(x, feasible_edges)
+    # print('edges_to_cut_list', edges_to_cut_list)
+    # print('x.shape[0]', x.shape[0])
+    penalty_lol = [[] for _ in range(x.shape[0])]
+    for i in range(x.shape[0]):
+        penalty_lol[i].extend([bond_order_penalty(graph, edges_to_cut_list[i]), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list[i]), ring_penalty(graph, cycleDict, edges_to_cut_list[i]), branching_penalty(graph, edges_to_cut_list[i]), hybridisation_penalty(graph, edges_to_cut_list[i]), conjugation_penalty(graph, edges_to_cut_list[i], conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list[i]), volume_penalty(atoms, graph, edges_to_cut_list[i], proxMatrix, minAtomNo)])
+    # penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), branching_penalty(graph, edges_to_cut_list), hybridisation_penalty(graph, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+    # penalty_list = np.array(penalty_list)
+    # print('penalty_list:', penalty_list)
+    # print('penalty_lol', penalty_lol)
     beta_values = np.array(betalist)
 
-    total_penalty = np.dot(penalty_list, beta_values)
+    # print('***', [np.dot(np.array(penalty_lol[i]), beta_values) for i in range(x.shape[0])])
+    total_penalty = np.array([np.dot(np.array(penalty_lol[i]), beta_values) for i in range(x.shape[0])])
+    # print('total_penalty', total_penalty)
     return total_penalty
     

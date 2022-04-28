@@ -85,16 +85,17 @@ print('conjugated_edges', conjugated_edges)
 
 nonHedges = [e for e in G.edges if G.nodes[e[0]]['element'] != 'H' and G.nodes[e[1]]['element'] != 'H']
 np.random.RandomState(100)
-binaryList = np.random.randint(2,size=len(nonHedges))
+# binaryList = np.random.randint(2,size=len(nonHedges))
 
-edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
-# print(edges_to_cut_list)
+# edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
+edges_to_cut_list = [(2,3)]
+# print('edges_to_cut_list', edges_to_cut_list)
 # edges_to_cut_list = [(2,3), (4,5)]
 
 
-# print('minimum_cycle_basis', [c for c in rings.minimum_cycle_basis(G)])
+# # print('minimum_cycle_basis', [c for c in rings.minimum_cycle_basis(G)])
 t = time.process_time()
-# penalty
+# # penalty
 conj_penalty = calculate_penalty.conjugation_penalty(G, [x for x in edges_to_cut_list], conjugated_edges)
 print('conj_penalty', conj_penalty)
 print('conj_penalty time', time.process_time() - t)
@@ -116,13 +117,13 @@ print('hybrid_penalty', hybrid_penalty)
 print('hybrid_penalty time', time.process_time() - thybrid)
 
 
-# print('donors')
-# for k,v in donorDict.items():
-#     print('name', donorDict[k].name)
-#     print('nodes', donorDict[k].nodes)
-#     print('edges', donorDict[k].edges)
-#     print('terminal_nodes', donorDict[k].terminal_nodes)
-#     print('node_electrons', donorDict[k].node_electrons)
+# # print('donors')
+# # for k,v in donorDict.items():
+# #     print('name', donorDict[k].name)
+# #     print('nodes', donorDict[k].nodes)
+# #     print('edges', donorDict[k].edges)
+# #     print('terminal_nodes', donorDict[k].terminal_nodes)
+# #     print('node_electrons', donorDict[k].node_electrons)
 
 # print('acceptorList')
 # for k,v in acceptorDict.items():
@@ -160,7 +161,8 @@ print('total_penalty', total_penalty)
 print('total penalty time', time.process_time() - t8)
 
 feasible_edges = optimize.get_feasible_edges(G)
+print('feasible edges', feasible_edges)
 dim = len(feasible_edges)
 pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo,dim)
-print('pos', pos)
+# print('pos', pos)
 print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))

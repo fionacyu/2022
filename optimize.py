@@ -1,6 +1,7 @@
 import calculate_penalty
 import pyswarms as ps
 import numpy as np
+import collections
 import multiprocessing as mp
 
 def get_feasible_edges(graph): # edges that do not include hydrogen 
@@ -12,9 +13,22 @@ def convert_bvector_edges(bvector, feasible_edges):
     edges_to_cut_list = [feasible_edges[i] for i in indList]
     return edges_to_cut_list
 
+def convert_bvector_edges1(bvector2d, feasible_edges):
+    mask = bvector2d == 1
+    indList1, indList2 = np.where(mask)[0], np.where(mask)[1]
+    edges_to_cut_list = [[] for _ in range(len(collections.Counter(indList1)))]
+    for i in range(len(collections.Counter(indList1))):
+        # print('i: ', i)
+        if i == 0:
+            start = 0
+        else:
+            start = sum([collections.Counter(indList1)[x] for x in range(i)])
+        edges_to_cut_list[i].extend([feasible_edges[j] for j in indList2[start:start + collections.Counter(indList1)[i]]] )
+    return edges_to_cut_list
+
 def run_optimizer(atoms, graph, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo, dim):
-    kwargs = {'atoms': atoms, 'feasible_edges': feasible_edges, 'graph': graph, 'conjugated_edges': conjugated_edges, 'donorDict': donorDict, 'acceptorDict': acceptorDict, 'connectionDict': connectionDict, 'aromaticDict': aromaticDict, 'cycleDict': cycleDict, 'betalist': betalist, 'proxMatrix': proxMatrix, 'minAtomNo': minAtomNo}
-    options = {'c1': 0.5, 'c2': 0.5, 'w': 0.9, 'k':9, 'p': 1}
-    optimizer = ps.discrete.binary.BinaryPSO(n_particles=10, dimensions=dim, options=options)
-    _, pos = optimizer.optimize(calculate_penalty.full_penalty_opt, iters=1000, n_processes=None , **kwargs)
+    kwargs = {'feasible_edges': feasible_edges, 'atoms': atoms, 'graph': graph, 'conjugated_edges': conjugated_edges, 'donorDict': donorDict, 'acceptorDict': acceptorDict, 'connectionDict': connectionDict, 'aromaticDict': aromaticDict, 'cycleDict': cycleDict, 'betalist': betalist, 'proxMatrix': proxMatrix, 'minAtomNo': minAtomNo}
+    options = {'c1': 0.5, 'c2': 0.5, 'w': 0.9, 'k':7, 'p': 1}
+    optimizer = ps.discrete.binary.BinaryPSO(n_particles=8, dimensions=dim, options=options)
+    _, pos = optimizer.optimize(calculate_penalty.full_penalty_opt, iters=500, n_processes=None , **kwargs)
     return pos
