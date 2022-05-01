@@ -16,7 +16,7 @@ def convert_bvector_edges(bvector, feasible_edges):
 def convert_bvector_edges1(bvector2d, feasible_edges):
     mask = bvector2d == 1
     indList1, indList2 = np.where(mask)[0], np.where(mask)[1]
-    edges_to_cut_list = [[] for _ in range(len(collections.Counter(indList1)))]
+    edges_to_cut_list = [[] for _ in range(bvector2d.shape[0])]
     for i in range(len(collections.Counter(indList1))):
         # print('i: ', i)
         if i == 0:
@@ -29,6 +29,9 @@ def convert_bvector_edges1(bvector2d, feasible_edges):
 def run_optimizer(atoms, graph, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo, dim):
     kwargs = {'feasible_edges': feasible_edges, 'atoms': atoms, 'graph': graph, 'conjugated_edges': conjugated_edges, 'donorDict': donorDict, 'acceptorDict': acceptorDict, 'connectionDict': connectionDict, 'aromaticDict': aromaticDict, 'cycleDict': cycleDict, 'betalist': betalist, 'proxMatrix': proxMatrix, 'minAtomNo': minAtomNo}
     options = {'c1': 0.5, 'c2': 0.5, 'w': 0.9, 'k':mp.cpu_count()-1, 'p': 1}
-    optimizer = ps.discrete.binary.BinaryPSO(n_particles=mp.cpu_count(), dimensions=dim, options=options)
+    # ipos = np.zeros(dim)
+    # ipos[int(minAtomNo)-1:ipos.size:int(minAtomNo)]
+    # ipos = np.tile(ipos, (mp.cpu_count(), 1))
+    optimizer = ps.discrete.binary.BinaryPSO(n_particles=mp.cpu_count(), dimensions=dim, options=options)#, init_pos=ipos)
     _, pos = optimizer.optimize(calculate_penalty.full_penalty_opt, iters=1000, n_processes=None , **kwargs)
     return pos

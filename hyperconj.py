@@ -1,5 +1,7 @@
+from numpy import sort
 import miscellaneous
 import boxing
+import load_data
 import networkx as nx
 from itertools import chain
 from itertools import product
@@ -172,32 +174,70 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
 
     acount, dcount = acount_start, dcount_start
     halogens = ['F', 'Cl', 'Br', 'I']
+    halogenh = ['I', 'Br', 'Cl', 'F', 'H']
+    donorCarbon, acceptorCarbon = [], []
     for edge in edgeList: 
         # print('edge', edge)
         # C - H sigma bond
-        if (graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] == 'H') or (graph.nodes[edge[0]]['element'] == 'H' and graph.nodes[edge[1]]['element'] == 'C'):
-            # hybridization of carbon must be 4
+        if (graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] in halogenh and graph.nodes[edge[0]]['ed'] == 4 and len(set([edge[0]]).intersection(donorCarbon + acceptorCarbon)) == 0) or (graph.nodes[edge[0]]['element'] in halogenh and graph.nodes[edge[1]]['element'] == 'C' and graph.nodes[edge[1]]['ed'] == 4 and len(set([edge[1]]).intersection(donorCarbon + acceptorCarbon)) == 0):
             carbon_node = miscellaneous.node_of_element(graph, edge, 'C')
-            if graph.nodes[carbon_node]['ed'] == 4:
+            # print('carbon_node', carbon_node)
+        #     # if graph.nodes[carbon_node]['ed'] == 4:
+            nodeNeighbours = [x for x in graph.neighbors(carbon_node) if graph.nodes[x]['element'] in halogenh]
+            # print('nodeNeighbours', nodeNeighbours)
+            elemNeighbours = [graph.nodes[x]['element'] for x in nodeNeighbours]
+            # print('elemNeighbours', elemNeighbours)
+            if 'H' in elemNeighbours:
                 donor = Donor('d%d' % dcount)
-                donor.add_nodes([x for x in edge])
-                donor.add_edges([edge])
-                donor.add_terminal_nodes([x for x in edge])
-                donor.add_electrons_dictionary([x for x in edge], [1,1])
+                donor.add_nodes([carbon_node, nodeNeighbours[elemNeighbours.index('H')]])
+                donor.add_edges([tuple(sorted((carbon_node, nodeNeighbours[elemNeighbours.index('H')])))])
+                donor.add_terminal_nodes([carbon_node, nodeNeighbours[elemNeighbours.index('H')]])
+                donor.add_electrons_dictionary([carbon_node, nodeNeighbours[elemNeighbours.index('H')]], [1,1])
                 donor.add_classification('sigma')
-                donor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
+                donor.add_boxLabels(list(dict.fromkeys([graph.nodes[carbon_node]['box'], graph.nodes[nodeNeighbours[elemNeighbours.index('H')]]['box']])))
                 donorDict['d%d' % dcount] = donor
                 dcount += 1
-                
-
+                donorCarbon.append(carbon_node)
+            
+            vdwradii = [load_data.get_radii(x) for x in elemNeighbours]
+            sortedNeighbours = [x for x, _ in sorted(zip(nodeNeighbours, vdwradii), key= lambda pair: pair[1], reverse=True)]
+            if sortedNeighbours:
                 acceptor = Acceptor('a%d' % acount)
-                acceptor.add_nodes([x for x in edge])
-                acceptor.add_edges([edge])
-                acceptor.add_terminal_nodes([x for x in edge])
+                acceptor.add_nodes([carbon_node, sortedNeighbours[0]])
+                acceptor.add_edges([tuple(sorted((carbon_node, sortedNeighbours[0])))])
+                acceptor.add_terminal_nodes([carbon_node, sortedNeighbours[0]])
                 acceptor.add_classification('sigma')
-                acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
+                acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[carbon_node]['box'], graph.nodes[sortedNeighbours[0]]['box']])))
                 acceptorDict['a%d' % acount] = acceptor
                 acount +=1 
+                acceptorCarbon.append(carbon_node)
+
+        # #############
+        # if (graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] == 'H') or (graph.nodes[edge[0]]['element'] == 'H' and graph.nodes[edge[1]]['element'] == 'C'):
+            # hybridization of carbon must be 4
+            # carbon_node = miscellaneous.node_of_element(graph, edge, 'C')
+            # if graph.nodes[carbon_node]['ed'] == 4:
+            #     donor = Donor('d%d' % dcount)
+            #     donor.add_nodes([x for x in edge])
+            #     donor.add_edges([edge])
+            #     donor.add_terminal_nodes([x for x in edge])
+            #     donor.add_electrons_dictionary([x for x in edge], [1,1])
+            #     donor.add_classification('sigma')
+            #     donor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
+            #     donorDict['d%d' % dcount] = donor
+            #     dcount += 1
+                
+
+            #     acceptor = Acceptor('a%d' % acount)
+            #     acceptor.add_nodes([x for x in edge])
+            #     acceptor.add_edges([edge])
+            #     acceptor.add_terminal_nodes([x for x in edge])
+            #     acceptor.add_classification('sigma')
+            #     acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
+            #     acceptorDict['a%d' % acount] = acceptor
+            #     acount +=1 
+        #############
+
 
         # C=C and C≡C bonds
         elif graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] == 'C':
@@ -221,16 +261,18 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
                 acceptorDict['a%d' % acount] = acceptor
                 acount += 1
         
+        #############
         # C-F, C-Cl, C-Br, C-I bonds
-        elif (graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] in halogens) or (graph.nodes[edge[0]]['element'] in halogens and graph.nodes[edge[1]]['element'] == 'C'):
-            acceptor = Acceptor('a%d' % acount)
-            acceptor.add_nodes([x for x in edge])
-            acceptor.add_edges([edge])
-            acceptor.add_terminal_nodes([x for x in edge])
-            acceptor.add_classification('sigma')
-            acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
-            acceptorDict['a%d' % acount] = acceptor
-            acount += 1
+        # elif (graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] in halogens) or (graph.nodes[edge[0]]['element'] in halogens and graph.nodes[edge[1]]['element'] == 'C'):
+        #     acceptor = Acceptor('a%d' % acount)
+        #     acceptor.add_nodes([x for x in edge])
+        #     acceptor.add_edges([edge])
+        #     acceptor.add_terminal_nodes([x for x in edge])
+        #     acceptor.add_classification('sigma')
+        #     acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
+        #     acceptorDict['a%d' % acount] = acceptor
+        #     acount += 1
+        #############
 
         # C=O bonds
         elif (graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] == 'O') or (graph.nodes[edge[0]]['element'] == 'O' and graph.nodes[edge[1]]['element'] == 'C'):

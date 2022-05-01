@@ -1,3 +1,4 @@
+from turtle import pen
 import optimize
 import load_data
 from cmath import cos, exp
@@ -10,24 +11,19 @@ import math
 import multiprocessing as mp
 
 def bond_order_penalty(graph, edges_to_cut_list):
-    penalty = 0
-    for edges in edges_to_cut_list:
-        penalty += graph[edges[0]][edges[1]]['bo']
+    penalty = sum([graph[edges[0]][edges[1]]['bo'] for edges in edges_to_cut_list])
     return penalty
 
 
-def branching_penalty(graph, edges_to_cut_list):
+def branching_penalty(graph, edges_to_cut_list): 
     eList = []
     for edges in [e for e in edges_to_cut_list if graph.nodes[e[0]]['element'] == 'C' and graph.nodes[e[1]]['element'] == 'C' and graph.nodes[e[0]]['ed'] == 4 and graph.nodes[e[1]]['ed'] == 4]:# and graph[e[0]][e[1]]['bo'] == 1]:, by def the bo would be 1
-        # if graph[edges[0]][edges[1]]['bo'] == 1: # only accounting for alkane branching
-        # nodeList = [x for x in graph.neighbors(edges[0]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C'] + [x for x in graph.neighbors(edges[1]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C']
         branchIntList =  [frozenset((edges[1], x)) for x in graph.neighbors(edges[0]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C' and x != edges[1]] + [frozenset((edges[0], x)) for x in graph.neighbors(edges[1]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C' and x != edges[0]]
         eList.extend(branchIntList)
-        # penalty += len(nodeList) # corresponds to the number of branching interactions lost due to edges being cut
-    # print('Counter(eList)', Counter(eList))
-    return len(Counter(eList))
+    rejected_branches = set(Counter(eList).keys()).intersection([frozenset(e) for e in graph.edges])
+    return len(Counter(eList)) - len(rejected_branches)
 
-def hybridisation_penalty(graph, edges_to_cut_list): # fix this
+def hybridisation_penalty(graph, edges_to_cut_list):
     penalty = 0
     influential_edges = [e for e in edges_to_cut_list if graph[e[0]][e[1]]['bo'] >= 2]
     nodeList = list(set(chain(*influential_edges)))
@@ -51,11 +47,6 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
 
     unique_conjugated_systems = set([tuple(x) for x in conjugated_systems])
     unique_conjugated_systems = [list(x) for x in unique_conjugated_systems]
-    # unique_conjugated_systems = [] # remove repeats
-    # for system in conjugated_systems:
-    #     if system not in unique_conjugated_systems:
-    #         unique_conjugated_systems.append(system)
-    # # print(unique_conjugated_systems)
 
     system_cs_list = []
     subsystem_cs_list = []
@@ -69,12 +60,8 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
     
         # getting the updated cs after breaking edges
         edges_to_remove = [x for x in system if x in edges_of_interest or x[::-1] in edges_of_interest]
-        # subsystem_edge_list = [x for x in system if x not in edges_to_remove]
         subsystem_edge_list = list(set(system) - set(edges_to_remove))
-        # print('subsystem_edge_list', subsystem_edge_list)
         subsystem_node_list = set(chain(*system))
-        # print(subsystem_node_list)
-
         # constructing subgraph
         sg = nx.Graph()
         sg.add_nodes_from([x for x in subsystem_node_list])
@@ -91,13 +78,7 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
         # print('sg_cs_list', sg_cs_list)
         average_sg_cs = sum(sg_cs_list) / len(sg_cs_list)
         subsystem_cs_list.append(average_sg_cs)
-    
-    # print(system_cs_list)
-    # print(subsystem_cs_list)
     penalty = np.sum(np.array(subsystem_cs_list) - np.array(system_cs_list))
-    # pool = mp.Pool(mp.cpu_count())
-    # penalty = sum(pool.starmap_async(miscellaneous.conj_penalty_para, [(graph, system, edges_of_interest) for system in unique_conjugated_systems]).get() )
-    # pool.close()
     return round(penalty,4)
 
 
@@ -158,7 +139,6 @@ def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_c
             connection_penalty = connection_penalty = 1/connectionDict[connection].bond_separation * (np.average(dsList) + np.average(asList))
             # print('connection_penalty', connection_penalty)
             penalty += connection_penalty
-    # print('len of connectionDict', len(connectionDict))
     # pool = mp.Pool(mp.cpu_count())
     # penalty = sum(pool.starmap_async(miscellaneous.hyperconj_penalty_connection, [( connection, connectionDict, donorDict, acceptorDict, edges_to_cut_list) for connection in connectionDict]).get())
     # pool.close()
@@ -225,13 +205,13 @@ def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
     refVol = reference_vol(atoms, minAtomNo)
     tgraph = graph.copy() 
     tgraph.remove_edges_from(edges_to_cut_list)
+    # print([x for x in nx.connected_components(tgraph)], file=open('connectedCompVol.dat', 'a'))
     connectedComp = (tgraph.subgraph(x) for x in nx.connected_components(tgraph))
-    penalty = 0 
-    for sg in connectedComp:
-        penalty += (refVol - load_data.get_volume(sg, proxMatrix))**2
-    # pool = mp.Pool(mp.cpu_count())
-    # penalty = sum(pool.starmap_async(load_data.get_volume, [(sg, proxMatrix, refVol) for sg in connectedComp]).get())
-    # pool.close()
+    # penalty = 0 
+    # for sg in connectedComp:
+    #     # penalty += (refVol - load_data.get_volume(sg, proxMatrix))**2
+    #     penalty += (load_data.get_volume(sg, proxMatrix)/refVol - 1)**2
+    penalty = sum([(load_data.get_volume(sg, proxMatrix)/refVol - 1)**2 for sg in connectedComp])
     return penalty
 
 
@@ -245,25 +225,9 @@ def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, a
     return total_penalty
 
 def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
-    # print('x: ', x)
     edges_to_cut_list = optimize.convert_bvector_edges1(x, feasible_edges)
-    # print('edges_to_cut_list', edges_to_cut_list)
-    # print('x.shape[0]', x.shape[0])
-    # penalty_lol = [[] for _ in range(x.shape[0])]
-    # for i in range(x.shape[0]):
-    #     penalty_lol[i].extend([bond_order_penalty(graph, edges_to_cut_list[i]), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list[i]), ring_penalty(graph, cycleDict, edges_to_cut_list[i]), branching_penalty(graph, edges_to_cut_list[i]), hybridisation_penalty(graph, edges_to_cut_list[i]), conjugation_penalty(graph, edges_to_cut_list[i], conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list[i]), volume_penalty(atoms, graph, edges_to_cut_list[i], proxMatrix, minAtomNo)])
-    # penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), branching_penalty(graph, edges_to_cut_list), hybridisation_penalty(graph, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
-    # penalty_list = np.array(penalty_list)
-    # print('penalty_list:', penalty_list
     pool = mp.Pool(mp.cpu_count())
-    penalty_list = pool.starmap_async(miscellaneous.full_penalty, [(atoms, graph, edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo) for edges in edges_to_cut_list]).get()
+    penalty_list = pool.starmap_async(miscellaneous.full_penalty, [(atoms, graph, x[i], edges_to_cut_list[i], conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo) for i in range(len(edges_to_cut_list))]).get()
     pool.close()
-    # print('penalty_list', penalty_list)
-    # beta_values = np.array(betalist)
-
-    # print('***', [np.dot(np.array(penalty_lol[i]), beta_values) for i in range(x.shape[0])])
-    # total_penalty = np.array([np.dot(np.array(penalty_lol[i]), beta_values) for i in range(x.shape[0])])
-    # total_penalty = np.array([np.dot(np.array(penalty_lol[i]), beta_values) for i in range(x.shape[0])])
-    # print('total_penalty', total_penalty)
     return penalty_list
     
