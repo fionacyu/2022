@@ -1,6 +1,6 @@
 import graph_characterisation
 import load_data
-import calculate_penalty
+import miscellaneous
 import hyperconj
 import aromaticity
 import rings
@@ -144,5 +144,7 @@ feasible_edges = optimize.get_feasible_edges(G)
 print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', "a"))
 dim = len(feasible_edges)
 pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo, dim)
-# print('pos', pos)
 print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
+
+symbolList, coordList, weightList, idList = miscellaneous.get_fragments(G,  optimize.convert_bvector_edges(pos, feasible_edges), coordinates)
+miscellaneous.fragment_xyz(symbolList, coordList, idList)

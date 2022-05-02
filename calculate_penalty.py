@@ -23,6 +23,17 @@ def branching_penalty(graph, edges_to_cut_list):
     rejected_branches = set(Counter(eList).keys()).intersection([frozenset(e) for e in graph.edges])
     return len(Counter(eList)) - len(rejected_branches)
 
+def branching_penalty2(graph, edges_to_cut_list):
+    influential_edges =  [e for e in edges_to_cut_list if graph.nodes[e[0]]['element'] == 'C' and graph.nodes[e[1]]['element'] == 'C' and graph.nodes[e[0]]['ed'] == 4 and graph.nodes[e[1]]['ed'] == 4]
+    eList = []
+    for edges in influential_edges:# and graph[e[0]][e[1]]['bo'] == 1]:, by def the bo would be 1
+        branchIntList =  [frozenset((edges[1], x)) for x in graph.neighbors(edges[0]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C' and x != edges[1]] + [frozenset((edges[0], x)) for x in graph.neighbors(edges[1]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C' and x != edges[0]]
+        eList.extend(branchIntList)
+    rejected_branches = set(Counter(eList).keys()).intersection([frozenset(e) for e in graph.edges])
+    branchEdges = set(Counter(eList).keys()) - rejected_branches
+    nodeList = [x for x in miscellaneous.flatten(influential_edges) if 'branch' in graph.nodes(data=True)[x]]
+    return sum( [np.count_nonzero(np.array([node in x for x in branchEdges]))/graph.nodes[node]['branch'] for node in nodeList])
+
 def hybridisation_penalty(graph, edges_to_cut_list):
     penalty = 0
     influential_edges = [e for e in edges_to_cut_list if graph[e[0]][e[1]]['bo'] >= 2]
@@ -32,7 +43,8 @@ def hybridisation_penalty(graph, edges_to_cut_list):
         # edges = miscellaneous.node_in_edgelist(influential_edges, node)
         boList = [graph[e[0]][e[1]]['bo'] for e in edges]
         deltaboList = [x - 1 for x in boList]
-        penalty += sum(deltaboList)
+        # penalty += sum(deltaboList)
+        penalty += (sum(deltaboList) / graph.nodes[node]['ed']) # relative error
     return penalty
 
 
@@ -78,7 +90,8 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
         # print('sg_cs_list', sg_cs_list)
         average_sg_cs = sum(sg_cs_list) / len(sg_cs_list)
         subsystem_cs_list.append(average_sg_cs)
-    penalty = np.sum(np.array(subsystem_cs_list) - np.array(system_cs_list))
+    # penalty = np.sum(np.array(subsystem_cs_list) - np.array(system_cs_list))
+    penalty = np.sum(np.divide(np.array(subsystem_cs_list) - np.array(system_cs_list), np.array(system_cs_list)) ) # relative error
     return round(penalty,4)
 
 
@@ -135,14 +148,11 @@ def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_c
                     # print('as', -1 * donor_electrons/da_node_number)
                     asList = np.append(asList, -1 * donor_electrons/da_node_number)
             
-
-            connection_penalty = connection_penalty = 1/connectionDict[connection].bond_separation * (np.average(dsList) + np.average(asList))
+            divisor = sum([donorDict[donor].node_electrons[x] for x in donorDict[donor].nodes])/(len(donorDict[donor].nodes) + len(acceptorDict[acceptor].nodes))
+            # connection_penalty = 1/connectionDict[connection].bond_separation * (np.average(dsList) + np.average(asList))
+            connection_penalty = 1/connectionDict[connection].bond_separation * (np.average(dsList) + np.average(asList))/divisor # relative error 
             # print('connection_penalty', connection_penalty)
             penalty += connection_penalty
-    # pool = mp.Pool(mp.cpu_count())
-    # penalty = sum(pool.starmap_async(miscellaneous.hyperconj_penalty_connection, [( connection, connectionDict, donorDict, acceptorDict, edges_to_cut_list) for connection in connectionDict]).get())
-    # pool.close()
-
 
     return round(penalty,4)
 
@@ -167,12 +177,9 @@ def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
         # nonbe_cycle_ind_list = [x for x in nonbe_cycle_ind_list if x not in be_cycle_ind_list]
         nonbe_cycle_ind_list = list(set(nonbe_cycle_ind_list) - set(be_cycle_ind_list))
 
-        # inc_penalty = aromaticDict[asys].size - (sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList))
         inc_penalty = sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList)
-        penalty += inc_penalty
-    # pool = mp.Pool(mp.cpu_count())
-    # penalty = sum(pool.starmap_async(miscellaneous.aromaticity_penalty_para, [(graph, asys, aromaticDict, edges_to_cut_list) for asys in aromaticDict] ).get() )
-    # pool.close()
+        # penalty += inc_penalty
+        penalty += (inc_penalty/len(miscellaneous.flatten(aromaticDict[asys].cycle_list))) # relative error?
 
     return penalty
 
@@ -192,7 +199,8 @@ def ring_penalty(graph, cycleDict, edges_to_cut_list):
     impactedCycles = [c for c in cycleDict if len(set(edgesBoxes).intersection(cycleDict[c].edgeList)) > 0]
     impactedCycleSize = [len(cycleDict[c].edgeList) for c in impactedCycles]
     totalstrain = round(sum([ring_strain(x) for x in impactedCycleSize]),4)
-    return abs(totalstrain)
+    # return abs(totalstrain)
+    return abs(totalstrain)/658.7 # relative error
 
 def reference_vol(atoms, minAtomNo):
     atomCount = Counter(atoms)

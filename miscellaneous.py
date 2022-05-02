@@ -1,10 +1,14 @@
 import sys
+from collections import Counter
+
+from matplotlib.pyplot import subplot_mosaic
 import load_data
 import graph_characterisation
 import calculate_penalty
 from itertools import chain
 import networkx as nx
 import numpy as np
+import os
 import time
 
 def flatten(t):
@@ -118,7 +122,8 @@ def get_pi_elec(conjNodeList, conjEdgeList, graph):
    
 def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
     # print('edges_to_cut_list', edges_to_cut_list)
-    penalty_list = [calculate_penalty.bond_order_penalty(graph, edges_to_cut_list), calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.ring_penalty(graph, cycleDict, edges_to_cut_list), calculate_penalty.branching_penalty(graph, edges_to_cut_list), calculate_penalty.hybridisation_penalty(graph, edges_to_cut_list), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+    # penalty_list = [calculate_penalty.bond_order_penalty(graph, edges_to_cut_list), calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.ring_penalty(graph, cycleDict, edges_to_cut_list), calculate_penalty.branching_penalty(graph, edges_to_cut_list), calculate_penalty.hybridisation_penalty(graph, edges_to_cut_list), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+    penalty_list = [0, calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.ring_penalty(graph, cycleDict, edges_to_cut_list), calculate_penalty.branching_penalty2(graph, edges_to_cut_list), calculate_penalty.hybridisation_penalty(graph, edges_to_cut_list), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
     print(("%-17s " * len(penalty_list)) % tuple([str(i) for i in penalty_list]), file=open('penalties.dat', "a"))
     print(', '.join(str(j) for j in pos),file=open('positions.dat', "a"))
@@ -127,3 +132,45 @@ def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDi
     total_penalty = np.dot(penalty_list, beta_values)
     # print('total_penalty', total_penalty)
     return total_penalty
+
+def get_fragments(graph, optimal_edges_to_cut, coordinates):
+    fgraph = graph.copy()
+    fgraph.remove_edges_from(optimal_edges_to_cut)
+
+    symbolList, coordList, weightList, idList = [], [], [], []
+    for i, cc in enumerate(nx.connected_components(fgraph)):
+        symbols = [graph.nodes[x]['element'] for x in cc]
+        coords = flatten([coordinates[x-1] for x in cc])
+        weights = [-1] * len(cc)
+        fragids = [i+1] * len(cc)
+
+        symbolList.extend(symbols)
+        coordList.extend(coords)
+        weightList.extend(weights)
+        idList.extend(fragids)
+    
+    count = len([x for x in nx.connected_components(fgraph)]) + 1
+    for edge in optimal_edges_to_cut:
+        nodes = nx.node_connected_component(fgraph, edge[0]) | nx.node_connected_component(fgraph, edge[1])
+        symbols = [graph.nodes[x]['element'] for x in nodes]
+        coords = flatten([coordinates[x-1] for x in nodes])
+        weights = [1] * len(nodes)
+        fragids = [count] * len(nodes)
+
+        symbolList.extend(symbols)
+        coordList.extend(coords)
+        weightList.extend(weights)
+        idList.extend(fragids)
+
+        count += 1
+    
+    return symbolList, coordList, weightList, idList
+
+def fragment_xyz(symbolList, coordList, idList):
+    os.system('mkdir fragxyz')
+    for k, v in Counter(idList).items():
+        print('%s\n' % v, file=open('fragxyz/%s.xyz' % k, 'a'))
+
+    for i in range(len(symbolList)):
+        print(symbolList[i], ', '.join(str(j) for j in coordList[3*i: 3*i + 3]), file=open('fragxyz/%s.xyz' % idList[i], 'a'))
+        
