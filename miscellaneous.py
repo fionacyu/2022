@@ -1,11 +1,8 @@
 import sys
 from collections import Counter
-
-from matplotlib.pyplot import subplot_mosaic
 import load_data
 import graph_characterisation
 import calculate_penalty
-from itertools import chain
 import networkx as nx
 import numpy as np
 import os
@@ -61,8 +58,8 @@ def shortest_path_length(graph, node1, node2):
         if node2 in next_nodes:
             current_path.append(node2)
             # return current_path # 1?
-            return (node1, dist)
-            # return (node1, len(current_path) - 1)
+            # return (node1, dist)
+            return (node1, len(current_path) - 1)
         # Add new paths
         for next_node in next_nodes:
             if not next_node in previous_nodes:
@@ -124,7 +121,7 @@ def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDi
     # penalty_list = [calculate_penalty.bond_order_penalty(graph, edges_to_cut_list), calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.ring_penalty(graph, cycleDict, edges_to_cut_list), calculate_penalty.branching_penalty(graph, edges_to_cut_list), calculate_penalty.hybridisation_penalty(graph, edges_to_cut_list), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = [0, calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.ring_penalty(graph, cycleDict, edges_to_cut_list), calculate_penalty.branching_penalty2(graph, edges_to_cut_list), calculate_penalty.hybridisation_penalty(graph, edges_to_cut_list), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
-    print(("%-17s " * len(penalty_list)) % tuple([str(i) for i in penalty_list]), file=open('penalties.dat', "a"))
+    print(("%-20s " * len(penalty_list)) % tuple([str(i) for i in penalty_list]), file=open('penalties.dat', "a"))
     print(', '.join(str(j) for j in pos),file=open('positions.dat', "a"))
     beta_values = np.array(betalist)
 

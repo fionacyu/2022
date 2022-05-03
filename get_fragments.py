@@ -17,8 +17,9 @@ import os
 mp.set_start_method('fork')
 
 os.system('rm *.dat')
+os.system('rm -r fragxyz')
 penNames = ['bo', 'aromaticity', 'ring', 'branching', 'hybridisation', 'conjugation', 'hyperconjugation', 'volume']
-print(("%-17s " * len(penNames)) % tuple([str(i) for i in penNames]), file=open('penalties.dat', "a"))
+print(("%-20s " * len(penNames)) % tuple([str(i) for i in penNames]), file=open('penalties.dat', "a"))
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--input', required=True)
@@ -92,7 +93,7 @@ print('conjugated_edges', conjugated_edges)
 # binaryList = np.random.randint(2,size=len(nonHedges))
 
 # edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
-# # print('edges_to_cut_list', edges_to_cut_list)
+# print('edges_to_cut_list', edges_to_cut_list)
 
 
 # t = time.process_time()
@@ -153,7 +154,7 @@ feasible_edges = optimize.get_feasible_edges(G)
 print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', "a"))
 dim = len(feasible_edges)
 pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo, dim)
-print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
+# print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
 
 symbolList, coordList, weightList, idList = miscellaneous.get_fragments(G,  optimize.convert_bvector_edges(pos, feasible_edges), coordinates)
 miscellaneous.fragment_xyz(symbolList, coordList, idList)

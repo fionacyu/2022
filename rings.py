@@ -67,8 +67,8 @@ def _min_cycle(G, orth, weight=None):
     Computes the minimum weight cycle in G,
     orthogonal to the vector orth as per [p. 338, 1]
     """
-    enodes = miscellaneous.flatten([list(range(x-4, x+1)) + list(range(y, y+5)) for x,y in orth]) 
-    # uvedges = [e for e in G.edges(data=True) if len(set(e).intersection(enodes)) > 0]
+    enodes = set(miscellaneous.flatten([ list(nx.dfs_preorder_nodes(G, source=x, depth_limit=10) ) for x,_ in orth]) )
+    uvedges = [e for e in G.edges if len(set(e).intersection(enodes)) > 0]
     # t2 = time.process_time()
     T = nx.Graph()
 
@@ -76,21 +76,16 @@ def _min_cycle(G, orth, weight=None):
     idx_nodes = {idx: node for node, idx in nodes_idx.items()}
 
     nnodes = len(nodes_idx)
-    # print('nnodes', nnodes)
 
     # Add 2 copies of each edge in G to T. If edge is in orth, add cross edge;
     # otherwise in-plane edge
-    # tt = time.process_time()
-    edgeList =[[(nodes_idx[u], nnodes + nodes_idx[v]), (nnodes + nodes_idx[u], nodes_idx[v])] if frozenset((u, v)) in orth else [(nodes_idx[u], nodes_idx[v]), (nnodes + nodes_idx[u], nnodes + nodes_idx[v])] for u, v, _ in G.edges(data=True)] 
+    edgeList =[[(nodes_idx[u], nnodes + nodes_idx[v]), (nnodes + nodes_idx[u], nodes_idx[v])] if frozenset((u, v)) in orth else [(nodes_idx[u], nodes_idx[v]), (nnodes + nodes_idx[u], nnodes + nodes_idx[v])] for u, v in uvedges] 
     T.add_edges_from(miscellaneous.flatten(edgeList))
-    # print('construction of T graph', time.process_time() - tt)
-    # t = time.process_time()
     T = {n: set(T.neighbors(n)) for n in T.nodes}
-    # print('redfining T time', time.process_time() - t)
     
     t1 = time.process_time()
     pool = mp.Pool(mp.cpu_count())
-    results = pool.starmap_async(miscellaneous.shortest_path_length, [(T, n, nnodes + n) for n in enodes]).get()
+    results = pool.starmap_async(miscellaneous.shortest_path_length, [(T, n-1, nnodes + n - 1) for n in enodes]).get()
     pool.close()
     # print('results', results)
     # print('shortest_path_length time', time.process_time() - t1)
@@ -107,6 +102,7 @@ def _min_cycle(G, orth, weight=None):
     # Now remove the edges that occur two times
     mcycle_pruned = _path_to_cycle(min_path_nodes)
     # print('_min_cycle', time.process_time() - t2)
+    # print('cycle_edges', {frozenset((idx_nodes[u], idx_nodes[v])) for u, v in mcycle_pruned})
     return {frozenset((idx_nodes[u], idx_nodes[v])) for u, v in mcycle_pruned}
 
 def _min_cycle_basis(comp, weight):
@@ -117,7 +113,6 @@ def _min_cycle_basis(comp, weight):
     # weight=None. Depending on implementation, it may be faster as well
     # t4 = time.process_time()
     spanning_tree_edges = list(nx.minimum_spanning_edges(comp, weight=None, data=False))
-    # print('spanning tree edges', spanning_tree_edges)
     # print('min spanning tree: ', time.process_time() - t4)
     # edges_excl = [frozenset(e) for e in comp.edges() if e not in spanning_tree_edges]
     edges_excl = [frozenset(e) for e in list(set(comp.edges()) - set(spanning_tree_edges))]
