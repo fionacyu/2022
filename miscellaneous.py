@@ -42,8 +42,6 @@ def index_of_cycle_list(cycle_list, edge):
     ind_list = [i for i, x in enumerate(blist) if x == True]
     return ind_list
 
-# def gen_all_binary_vectors(length: int) -> torch.Tensor:
-#     return ((torch.arange(2**length).unsqueeze(1) >> torch.arange(length-1, -1, -1)) & 1).float()
 def shortest_path_length(graph, node1, node2):
     # BFS method, performs in linear time
     path_list = [[node1]]
@@ -64,6 +62,7 @@ def shortest_path_length(graph, node1, node2):
             current_path.append(node2)
             # return current_path # 1?
             return (node1, dist)
+            # return (node1, len(current_path) - 1)
         # Add new paths
         for next_node in next_nodes:
             if not next_node in previous_nodes:
@@ -130,7 +129,7 @@ def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDi
     beta_values = np.array(betalist)
 
     total_penalty = np.dot(penalty_list, beta_values)
-    # print('total_penalty', total_penalty)
+    print(total_penalty, file=open('cost.dat', "a"))
     return total_penalty
 
 def get_fragments(graph, optimal_edges_to_cut, coordinates):

@@ -1,6 +1,7 @@
 import graph_characterisation
 import load_data
 import miscellaneous
+import calculate_penalty
 import hyperconj
 import aromaticity
 import rings
@@ -52,6 +53,11 @@ t3 = time.process_time()
 cycleDict = rings.edgeList_dictionary(G)
 print('defining rings time: ', time.process_time() - t3)
 
+# print('rings ***')
+# for cycle in cycleDict:
+#     print(cycleDict[cycle].edgeList)
+# print('***')
+
 t4 = time.process_time()
 cycleDict = boxing.classify_cycles(G, cycleDict)
 print('ring classification boxes time: ', time.process_time() - t4)
@@ -84,14 +90,13 @@ print('conjugated_edges', conjugated_edges)
 # nonHedges = [e for e in G.edges if G.nodes[e[0]]['element'] != 'H' and G.nodes[e[1]]['element'] != 'H']
 # np.random.RandomState(100)
 # binaryList = np.random.randint(2,size=len(nonHedges))
-# binaryList = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1])
 
 # edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
-# print('edges_to_cut_list', edges_to_cut_list)
+# # print('edges_to_cut_list', edges_to_cut_list)
 
 
 # t = time.process_time()
-# penalty
+# # penalty
 # conj_penalty = calculate_penalty.conjugation_penalty(G, [x for x in edges_to_cut_list], conjugated_edges)
 # print('conj_penalty', conj_penalty)
 # print('conj_penalty time', time.process_time() - t)
@@ -110,7 +115,7 @@ print('conjugated_edges', conjugated_edges)
 # thybrid = time.process_time()
 # hybrid_penalty = calculate_penalty.hybridisation_penalty(G, [x for x in edges_to_cut_list])
 # print('hybrid_penalty', hybrid_penalty)
-# # print('hybrid_penalty time', time.process_time() - thybrid)
+# print('hybrid_penalty time', time.process_time() - thybrid)
 
 # taroma = time.process_time()
 # aromatic_penalty = calculate_penalty.aromaticity_penalty(G, aromaticDict, [x for x in edges_to_cut_list])
@@ -128,14 +133,18 @@ print('conjugated_edges', conjugated_edges)
 # vol_penalty = calculate_penalty.volume_penalty(atoms, G, edges_to_cut_list, proxMatrix, minAtomNo)
 # print('vol_penalty', vol_penalty)
 
+# thyper = time.process_time()
+# hyper_penalty = calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list)
+# print('hyper penalty time', time.process_time() - thyper)
 # elapsed_time = time.process_time() - t
 # print('penalty time: ', elapsed_time)
 # final_time = time.process_time() - t1
 # print('total time: ', final_time)
 
 # t8 = time.process_time()
-# # minAtomNo = np.random.randint(low=5, high=15, size=1)[0]
-betalist = [1,1,1.3,1,1,1.6,1.6,0.8]
+# minAtomNo = np.random.randint(low=5, high=15, size=1)[0]
+# betalist = [1,1,1.3,1,1,1.6,1.6,0.8]
+betalist = [1,1,1,1,1,1,1,1]
 # total_penalty = calculate_penalty.full_penalty(atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo)
 # print('total_penalty', total_penalty)
 # print('total penalty time', time.process_time() - t8)

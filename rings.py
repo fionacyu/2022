@@ -34,12 +34,17 @@ def shortest_path(graph, node1, node2):
     previous_nodes = {node1}
     if node1 == node2:
         return path_list[0]
-        
-    while path_index < len(path_list):
+    
+    dist = 1
+
+    current_path = path_list[path_index]
+    while path_index < len(path_list) and len(current_path) -1 < 10:
         current_path = path_list[path_index]
         last_node = current_path[-1]
         next_nodes = graph[last_node]
         # Search goal node
+        # print('current_path', current_path)
+        # print('dist', dist)
         if node2 in next_nodes:
             current_path.append(node2)
             return current_path
@@ -51,50 +56,19 @@ def shortest_path(graph, node1, node2):
                 path_list.append(new_path)
                 # To avoid backtracking
                 previous_nodes.add(next_node)
+                dist += 1
         # Continue to next path in list
         path_index += 1
     # No path is found
     return []
-
-# def shortest_path_length(graph, node1, node2):
-#     # BFS method, performs in linear time
-#     path_list = [[node1]]
-#     path_index = 0
-#     # To keep track of previously visited nodes
-#     previous_nodes = {node1}
-#     if node1 == node2:
-#         return (node1, 0)#path_list[0]
-
-#     dist = 1
-
-#     while path_index < len(path_list):
-#         current_path = path_list[path_index]
-#         last_node = current_path[-1]
-#         next_nodes = graph[last_node]
-#         # Search goal node
-#         if node2 in next_nodes:
-#             current_path.append(node2)
-#             # return current_path # 1?
-#             return (node1, dist)
-#         # Add new paths
-#         for next_node in next_nodes:
-#             if not next_node in previous_nodes:
-#                 new_path = current_path[:]
-#                 new_path.append(next_node)
-#                 path_list.append(new_path)
-#                 # To avoid backtracking
-#                 previous_nodes.add(next_node)
-#                 dist += 1
-#         # Continue to next path in list
-#         path_index += 1
-#     # No path is found
-#     return (node1, 0)
 
 def _min_cycle(G, orth, weight=None):
     """
     Computes the minimum weight cycle in G,
     orthogonal to the vector orth as per [p. 338, 1]
     """
+    enodes = miscellaneous.flatten([list(range(x-4, x+1)) + list(range(y, y+5)) for x,y in orth]) 
+    # uvedges = [e for e in G.edges(data=True) if len(set(e).intersection(enodes)) > 0]
     # t2 = time.process_time()
     T = nx.Graph()
 
@@ -106,37 +80,27 @@ def _min_cycle(G, orth, weight=None):
 
     # Add 2 copies of each edge in G to T. If edge is in orth, add cross edge;
     # otherwise in-plane edge
-    for u, v, data in G.edges(data=True):
-        uidx, vidx = nodes_idx[u], nodes_idx[v]
-        edge_w = data.get(weight, 1)
-        if frozenset((u, v)) in orth:
-            T.add_edges_from(
-                [(uidx, nnodes + vidx), (nnodes + uidx, vidx)], weight=edge_w
-            )
-        else:
-            T.add_edges_from(
-                [(uidx, vidx), (nnodes + uidx, nnodes + vidx)], weight=edge_w
-            )
-    
+    # tt = time.process_time()
+    edgeList =[[(nodes_idx[u], nnodes + nodes_idx[v]), (nnodes + nodes_idx[u], nodes_idx[v])] if frozenset((u, v)) in orth else [(nodes_idx[u], nodes_idx[v]), (nnodes + nodes_idx[u], nnodes + nodes_idx[v])] for u, v, _ in G.edges(data=True)] 
+    T.add_edges_from(miscellaneous.flatten(edgeList))
+    # print('construction of T graph', time.process_time() - tt)
     # t = time.process_time()
-    # all_shortest_pathlens = dict(nx.shortest_path_length(T, weight=weight))
-    # cross_paths_w_lens = {
-    #     n: all_shortest_pathlens[n][nnodes + n] for n in range(nnodes)
-    # }
-    # print('all_shortest_pathlens[0]: ', all_shortest_pathlens[0])
     T = {n: set(T.neighbors(n)) for n in T.nodes}
-    # cross_paths_w_lens = {n : shortest_path_length(T, n, nnodes + n) for n in range(nnodes) }
+    # print('redfining T time', time.process_time() - t)
     
+    t1 = time.process_time()
     pool = mp.Pool(mp.cpu_count())
-    results = pool.starmap_async(miscellaneous.shortest_path_length, [(T, n, nnodes + n) for n in range(nnodes)]).get()
+    results = pool.starmap_async(miscellaneous.shortest_path_length, [(T, n, nnodes + n) for n in enodes]).get()
     pool.close()
+    # print('results', results)
+    # print('shortest_path_length time', time.process_time() - t1)
+    # print('shortest_path_length', results)
     start = min(results, key = lambda t:t[1])[0]
+    # print('start', start)
     # Now compute shortest paths in T, which translates to cyles in G
-    # start = min(cross_paths_w_lens, key=cross_paths_w_lens.get)
     end = nnodes + start
-    # T = {n: set(T.neighbors(n)) for n in T.nodes}
-    # min_path = nx.shortest_path(T, source=start, target=end)#, weight="weight")
     min_path = shortest_path(T, start, end)
+    # print('min_path', min_path)
 
     # Now we obtain the actual path, re-map nodes in T to those in G
     min_path_nodes = [node if node < nnodes else node - nnodes for node in min_path]
@@ -158,7 +122,7 @@ def _min_cycle_basis(comp, weight):
     # edges_excl = [frozenset(e) for e in comp.edges() if e not in spanning_tree_edges]
     edges_excl = [frozenset(e) for e in list(set(comp.edges()) - set(spanning_tree_edges))]
     N = len(edges_excl)
-    # print('len(edges_excl): ', len(edges_excl))
+    # print('edges_excl: ', edges_excl)
 
     # We maintain a set of vectors orthogonal to sofar found cycles
     set_orth = [{edge} for edge in edges_excl]
@@ -166,6 +130,7 @@ def _min_cycle_basis(comp, weight):
     for k in range(N):
         # kth cycle is "parallel" to kth vector in set_orth
         # t = time.process_time()
+        # print('set_orth[k]', set_orth[k])
         new_cycle = _min_cycle(comp, set_orth[k], weight=weight)
         # print('_min_cycle', time.process_time() - t)
         # print('list(set().union(*new_cycle))', [tuple(list(x)) for x in new_cycle])
@@ -179,6 +144,8 @@ def _min_cycle_basis(comp, weight):
         ]
     # print('_min_cycle_basis', time.process_time() - t3)
     # print('_min_cycle_basis time: ', time.process_time() - t1)
+    cb = list(filter(None, cb))
+    # print('cb', cb)
     return cb
 
 def minimum_cycle_basis(G, weight=None):
