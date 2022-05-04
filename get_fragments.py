@@ -73,6 +73,14 @@ donorDict, acceptorDict, connectionDict = hyperconj.classify_donor_acceptor_conn
 print('len of connectionDict', len(connectionDict))
 print('hyerpconjugation classification time: ', time.process_time() - t6)
 
+# for donor in donorDict:
+#     print(donor, donorDict[donor].nodes)
+
+# for acc in acceptorDict:
+#     print(acc, acceptorDict[acc].nodes)
+
+# for connection in connectionDict:
+#     print(connection, 'bond separation', connectionDict[connection].simple_paths)
 
 # defining boxes
 t7 = time.process_time()
@@ -136,6 +144,7 @@ print('conjugated_edges', conjugated_edges)
 
 # thyper = time.process_time()
 # hyper_penalty = calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list)
+# print('hyper penalty', hyper_penalty)
 # print('hyper penalty time', time.process_time() - thyper)
 # elapsed_time = time.process_time() - t
 # print('penalty time: ', elapsed_time)

@@ -1,3 +1,5 @@
+import rings
+import hyperconj
 import sys
 from collections import Counter
 import load_data
@@ -6,6 +8,8 @@ import calculate_penalty
 import networkx as nx
 import numpy as np
 import os
+from itertools import product
+import math
 import time
 
 def flatten(t):
@@ -170,3 +174,56 @@ def fragment_xyz(symbolList, coordList, idList):
     for i in range(len(symbolList)):
         print(symbolList[i], ', '.join(str(j) for j in coordList[3*i: 3*i + 3]), file=open('fragxyz/%s.xyz' % idList[i], 'a'))
         
+def hyperconj_connections_para(graphDict, comb, donorDict, acceptorDict):
+    donorLabel = comb[0]
+    acceptorLabel = comb[1]
+
+    donor_terminal_nodes = donorDict[donorLabel].terminal_nodes
+    acceptor_terminal_nodes = acceptorDict[acceptorLabel].terminal_nodes
+
+    terminal_comb_list = list(product(donor_terminal_nodes, acceptor_terminal_nodes))
+    successfulIters = []
+    for i, tcomb in enumerate(terminal_comb_list):
+        path = rings.shortest_path(graphDict, tcomb[0], tcomb[1], 3)
+        if len(path) > 0:
+            successfulIters.append(i)
+            if len(path) == 2: # bond separation is 1 bc the number of bonds == len(path) - 1
+                daConnection = hyperconj.DonorAcceptorConnection()
+                daConnection.add_simple_paths([tuple(sorted((path[i], path[i+1]))) for i in range(len(path)-1)])
+                daConnection.add_bond_separation(len(path)-1)
+                # connectionDict[comb] = daConnection
+                break
+            
+            if i == successfulIters[0]:
+                daConnection = hyperconj.DonorAcceptorConnection()
+                daConnection.add_simple_paths([tuple(sorted((path[i], path[i+1]))) for i in range(len(path)-1)])
+                daConnection.add_bond_separation(len(path)-1)
+            
+            elif i > successfulIters[0]:
+                if len(path) - 1 < daConnection.bond_separation:
+                    daConnection.add_simple_paths([tuple(sorted((path[i], path[i+1]))) for i in range(len(path)-1)])
+                    daConnection.add_bond_separation(len(path)-1)
+    if len(successfulIters) > 0:
+        return (comb, daConnection)
+    else:
+        return (comb, None)
+
+# def hybridisation2_para(graph, node, proxMatrix, tol):
+    
+#     bondED, bondElec = 0, 0
+#     bondVector = proxMatrix[:,node-1] + proxMatrix[node-1,:] 
+#     otherAtoms = [x for x in range(len(bondVector)) if bondVector[x] < 3 and bondVector[x] > 0]
+#     for j in otherAtoms:
+#         atom1, atom2 = graph.nodes[node]['element'], graph.nodes[j+1]['element']
+#         bo = load_data.get_bond_order(atom1, atom2, bondVector[j], tol)
+#         if bo != 0:
+#             if len(set([(node, j+1), (j+1, node)]).intersection(node)) == 0:
+#                 # edgeAttr[(nodeNumber, j+1)] = {'bo': bo}
+#                 eAttrTuple = (tuple(sorted((node, j+1))), {'bo': bo} )
+#             bondElec = bondElec + 2 * bo
+#             bondED = bondED + 1
+#     valElec = load_data.get_valence(graph.nodes[node]['element'])
+#     elecDom = math.ceil(bondED + 0.5 * (valElec - 0.5 * bondElec - graph.nodes[node]['charge'])) 
+#     nAttrTuple = (node, {'ed': elecDom})
+
+#     return [nAttrTuple, eAttrTuple]
