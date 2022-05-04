@@ -25,7 +25,7 @@ def _path_to_cycle(path):
         edges ^= {edge}
     return edges
 
-def shortest_path(graph, node1, node2):
+def shortest_path(graph, node1, node2, cutoff):
     # BFS method, performs in linear time
     # taken from https://onestepcode.com/graph-shortest-path-python/?utm_source=rss&utm_medium=rss&utm_campaign=graph-shortest-path-python
     path_list = [[node1]]
@@ -38,7 +38,7 @@ def shortest_path(graph, node1, node2):
     dist = 1
 
     current_path = path_list[path_index]
-    while path_index < len(path_list) and len(current_path) -1 < 10:
+    while path_index < len(path_list) and len(current_path) -1 < cutoff:
         current_path = path_list[path_index]
         last_node = current_path[-1]
         next_nodes = graph[last_node]
@@ -94,7 +94,7 @@ def _min_cycle(G, orth, weight=None):
     # print('start', start)
     # Now compute shortest paths in T, which translates to cyles in G
     end = nnodes + start
-    min_path = shortest_path(T, start, end)
+    min_path = shortest_path(T, start, end, 10)
     # print('min_path', min_path)
 
     # Now we obtain the actual path, re-map nodes in T to those in G

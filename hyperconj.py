@@ -1,4 +1,4 @@
-from numpy import sort
+import rings
 import miscellaneous
 import boxing
 import load_data
@@ -6,7 +6,7 @@ import networkx as nx
 from itertools import chain
 from itertools import product
 import multiprocessing as mp
-
+import time
 
 # defining the donor and acceptor objects
 # each donor and acceptor will be labelled with dn (donor) or an (acceptor) where n is an integer
@@ -173,7 +173,7 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
     # print('edgeList: ', edgeList)
 
     acount, dcount = acount_start, dcount_start
-    halogens = ['F', 'Cl', 'Br', 'I']
+    # halogens = ['F', 'Cl', 'Br', 'I']
     halogenh = ['I', 'Br', 'Cl', 'F', 'H']
     donorCarbon, acceptorCarbon = [], []
     for edge in edgeList: 
@@ -212,33 +212,6 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
                 acount +=1 
                 acceptorCarbon.append(carbon_node)
 
-        # #############
-        # if (graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] == 'H') or (graph.nodes[edge[0]]['element'] == 'H' and graph.nodes[edge[1]]['element'] == 'C'):
-            # hybridization of carbon must be 4
-            # carbon_node = miscellaneous.node_of_element(graph, edge, 'C')
-            # if graph.nodes[carbon_node]['ed'] == 4:
-            #     donor = Donor('d%d' % dcount)
-            #     donor.add_nodes([x for x in edge])
-            #     donor.add_edges([edge])
-            #     donor.add_terminal_nodes([x for x in edge])
-            #     donor.add_electrons_dictionary([x for x in edge], [1,1])
-            #     donor.add_classification('sigma')
-            #     donor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
-            #     donorDict['d%d' % dcount] = donor
-            #     dcount += 1
-                
-
-            #     acceptor = Acceptor('a%d' % acount)
-            #     acceptor.add_nodes([x for x in edge])
-            #     acceptor.add_edges([edge])
-            #     acceptor.add_terminal_nodes([x for x in edge])
-            #     acceptor.add_classification('sigma')
-            #     acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
-            #     acceptorDict['a%d' % acount] = acceptor
-            #     acount +=1 
-        #############
-
-
         # C=C and C≡C bonds
         elif graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] == 'C':
             if  graph[edge[0]][edge[1]]['bo'] == 2 or  graph[edge[0]][edge[1]]['bo'] == 3:
@@ -260,19 +233,6 @@ def donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount_start, a
                 acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
                 acceptorDict['a%d' % acount] = acceptor
                 acount += 1
-        
-        #############
-        # C-F, C-Cl, C-Br, C-I bonds
-        # elif (graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] in halogens) or (graph.nodes[edge[0]]['element'] in halogens and graph.nodes[edge[1]]['element'] == 'C'):
-        #     acceptor = Acceptor('a%d' % acount)
-        #     acceptor.add_nodes([x for x in edge])
-        #     acceptor.add_edges([edge])
-        #     acceptor.add_terminal_nodes([x for x in edge])
-        #     acceptor.add_classification('sigma')
-        #     acceptor.add_boxLabels(list(dict.fromkeys([graph.nodes[edge[0]]['box'], graph.nodes[edge[1]]['box']])))
-        #     acceptorDict['a%d' % acount] = acceptor
-        #     acount += 1
-        #############
 
         # C=O bonds
         elif (graph.nodes[edge[0]]['element'] == 'C' and graph.nodes[edge[1]]['element'] == 'O') or (graph.nodes[edge[0]]['element'] == 'O' and graph.nodes[edge[1]]['element'] == 'C'):
@@ -292,22 +252,26 @@ def donor_acceptor_connections(graph, donorDict, acceptorDict):
     connectionDict = {}
     # print('donor: ', [k for k, _ in donorDict.items()])
     # print('acceptor: ', [k for k, _ in acceptorDict.items()])
-
     da_comb_list = list(product([donorDict[k].name for k, _ in donorDict.items()], [acceptorDict[k].name for k, _ in acceptorDict.items()])) # need to remove ones which are the same
     # print('     da_comb_list', len(da_comb_list))#, da_comb_list)
     rejected_combinations = [x for x in da_comb_list if donorDict[x[0]].nodes == acceptorDict[x[1]].nodes and donorDict[x[0]].edges == acceptorDict[x[1]].edges and donorDict[x[0]].terminal_nodes == acceptorDict[x[1]].terminal_nodes] + [x for x in da_comb_list if donorDict[x[0]].classification == acceptorDict[x[1]].classification]
     # print('     rejected comb', len(rejected_combinations))
-    # da_comb_list = [x for x in da_comb_list if x not in rejected_combinations] # removes donors and acceptor pairings which correspond to the same group and donor acceptor pairings of the same classification (sigma or pi)
     da_comb_list = list(set(da_comb_list) - set(rejected_combinations))
+    print('     da comb before boxing', len(da_comb_list))
     # print('     removing rejected combinartions', len(da_comb_list))
     # da_comb_list = [x for x in da_comb_list if boxing.adjacent_status_da(donorDict[x[0]].boxLabelList, acceptorDict[x[1]].boxLabelList, boxDict)] # the boxes that donor and acceptors belong in are neighbours
+    t1 = time.process_time()
     pool = mp.Pool(mp.cpu_count())
     da_comb_list = pool.starmap_async(boxing.adjacent_da, [(da, donorDict, acceptorDict) for da in da_comb_list]).get()
     pool.close()
+    print('     da comb time', time.process_time() - t1)
+    print('     da comb after boxing', len([x for x in filter(None, da_comb_list)]))
     # print('     da connections boxing', len(da_comb_list))
     # print('da_comb_list', da_comb_list)
 
     # count = 0 
+    path_time = 0
+    g = {n: set(graph.neighbors(n)) for n in graph.nodes()}
     for comb in filter(None, da_comb_list):
         donorLabel = comb[0]
         acceptorLabel = comb[1]
@@ -316,51 +280,59 @@ def donor_acceptor_connections(graph, donorDict, acceptorDict):
         acceptor_terminal_nodes = acceptorDict[acceptorLabel].terminal_nodes
 
         terminal_comb_list = list(product(donor_terminal_nodes, acceptor_terminal_nodes))
-        potential_path_lists, potential_path_edges_list = [], [] # lol
-        potential_tcomb_list = [] # lol
+        t2 = time.process_time()
         for tcomb in terminal_comb_list:
-            paths = list(nx.all_simple_paths(graph, source=tcomb[0], target=tcomb[1], cutoff=3)) #algo scales O(V+E)
+            # paths = list(nx.all_simple_paths(graph, source=tcomb[0], target=tcomb[1], cutoff=3)) #algo scales O(V+E)
+            path = rings.shortest_path(g, tcomb[0], tcomb[1], 3)
 
-            if len(paths) > 0:
-                potential_path_lists.append(paths)
-                potential_path_edges_list.append([list(x) for x in map(nx.utils.pairwise, paths)][0])
-                potential_tcomb_list.append(tcomb)
-        
-        # print('potential_path_edges_list', potential_path_edges_list)
-
-        if len(potential_tcomb_list) > 0: # there is a connection between the donor comb[0] and acceptor comb[1]
-            sorted_potential_path_lists = [sorted(x, key=len)[0] for x in potential_path_lists] # getting the shortest path from donor to acceptor
-            new_sorted_path_lists = sorted(sorted_potential_path_lists, key=len)
-            indx = sorted_potential_path_lists.index(new_sorted_path_lists[0])
-            daConnection = DonorAcceptorConnection()
-            daConnection.add_simple_paths(potential_path_edges_list[indx])
-            daConnection.add_bond_separation(len(potential_path_edges_list[indx]))
-            connectionDict[comb] = daConnection
-    
+            if len(path) > 0:
+                if len(path) == 2: # bond separation is 1 bc the number of bonds == len(path) - 1
+                    daConnection = DonorAcceptorConnection()
+                    daConnection.add_simple_paths([tuple(sorted((path[i], path[i+1]))) for i in range(len(path)-1)])
+                    daConnection.add_bond_separation(len(path)-1)
+                    connectionDict[comb] = daConnection
+                    break
+                if comb in connectionDict:
+                    if len(path) - 1 < connectionDict[comb].bond_separation:
+                        connectionDict[comb].add_simple_paths([tuple(sorted((path[i], path[i+1]))) for i in range(len(path)-1)])
+                        connectionDict[comb].add_bond_separation(len(path)-1)
+                        connectionDict[comb] = daConnection
+                elif comb not in connectionDict:
+                    daConnection = DonorAcceptorConnection()
+                    daConnection.add_simple_paths([tuple(sorted((path[i], path[i+1]))) for i in range(len(path)-1)])
+                    daConnection.add_bond_separation(len(path)-1)
+                    connectionDict[comb] = daConnection
+        path_time += time.process_time() -t2
+    print('     path time', path_time)
     return connectionDict
             
 
 def classify_donor_acceptor_connections(graph, conjugated_edges):
     donorDict, acceptorDict = {}, {}
 
+    t1 = time.process_time()
     dlist, alist = donor_acceptor_status_conj_nodes(graph, conjugated_edges)
-    print('da status conj systems')
+    print('da status conj systems time', time.process_time() - t1)
     donorDict.update(dlist)
     acceptorDict.update(alist)
     del dlist, alist
 
+    t2 = time.process_time()
     dlist, alist, dcount, acount = donor_acceptor_status_nonconj_nodes(graph, conjugated_edges)
-    print('da status nonconj nodes')
+    print('da status nonconj nodes', time.process_time() -t2)
     donorDict.update(dlist)
     acceptorDict.update(alist)
     del dlist, alist
 
+    t3 = time.process_time()
     dlist, alist = donor_acceptor_status_nonconj_edges(graph, conjugated_edges, dcount, acount)
-    print('da status nonconj edges')
+    print('da status nonconj edges', time.process_time() - t3)
     donorDict.update(dlist)
     acceptorDict.update(alist)
     del dlist, alist
 
+    t4 = time.process_time()
     connectionDict = donor_acceptor_connections(graph, donorDict, acceptorDict)
+    print('da connections time', time.process_time() - t4)
 
     return donorDict, acceptorDict, connectionDict
