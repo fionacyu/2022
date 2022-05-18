@@ -127,18 +127,18 @@ def check_hybrid(graph): #check for hybridisation of oxygen, sulfur and nitrogen
 
         return graph
 
-def branching(graph):
-    cnodes = [x for x in graph.nodes if graph.nodes[x]['element'] == 'C' and graph.nodes[x]['ed'] == 4]
-    for cn in cnodes:
-        neighList = list(set(nx.dfs_preorder_nodes(graph, source=cn, depth_limit=2)) - set(graph.neighbors(cn)) - {cn})
-        neigh2nd = [x for x in neighList if len(set([x]).intersection(cnodes)) > 0]
-        pathList = [list(nx.all_simple_paths(graph, source=cn, target=neigh, cutoff=2))[0] for neigh in neigh2nd]
-        pathList = [x for x in pathList if len(x) == 3]
-        cedList = [graph.nodes[x[1]]['ed'] for x in pathList]
-        branches = Counter(cedList)[4]
-        if branches != 0:
-            graph.nodes[cn]['branch'] = branches
-    return graph
+# def branching(graph):
+#     cnodes = [x for x in graph.nodes if graph.nodes[x]['element'] == 'C' and graph.nodes[x]['ed'] == 4]
+#     for cn in cnodes:
+#         neighList = list(set(nx.dfs_preorder_nodes(graph, source=cn, depth_limit=2)) - set(graph.neighbors(cn)) - {cn})
+#         neigh2nd = [x for x in neighList if len(set([x]).intersection(cnodes)) > 0]
+#         pathList = [list(nx.all_simple_paths(graph, source=cn, target=neigh, cutoff=2))[0] for neigh in neigh2nd]
+#         pathList = [x for x in pathList if len(x) == 3]
+#         cedList = [graph.nodes[x[1]]['ed'] for x in pathList]
+#         branches = Counter(cedList)[4]
+#         if branches != 0:
+#             graph.nodes[cn]['branch'] = branches
+#     return graph
 
 
 
@@ -269,7 +269,7 @@ def main(graph, coordinates):
     graph = check_hybrid(graph) # double checks the electron domains of oxygens and nitrogens in tricky cases (e.g. furan, pyrrole and formamide)
     print('     check hybridisation time: ', time.process_time() - t3)
 
-    graph = branching(graph)
+    # graph = branching(graph)
 
     t4 = time.process_time()
     graph, _, conjugated_edges = update_graph_pi(graph) # adds pi electrons (participating in conjugation) as node attribute, retrieves the edges involved in a conjugated system

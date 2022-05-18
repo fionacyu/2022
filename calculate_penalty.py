@@ -1,4 +1,3 @@
-from turtle import pen
 import optimize
 import load_data
 from cmath import cos, exp
@@ -6,46 +5,15 @@ import miscellaneous
 import networkx as nx
 from itertools import chain
 import numpy as np 
-from collections import Counter
+from collections import Counter 
 import math
 import multiprocessing as mp
 
 def bond_order_penalty(graph, edges_to_cut_list):
-    penalty = sum([graph[edges[0]][edges[1]]['bo'] for edges in edges_to_cut_list])
-    return penalty
-
-
-def branching_penalty(graph, edges_to_cut_list): 
-    eList = []
-    for edges in [e for e in edges_to_cut_list if graph.nodes[e[0]]['element'] == 'C' and graph.nodes[e[1]]['element'] == 'C' and graph.nodes[e[0]]['ed'] == 4 and graph.nodes[e[1]]['ed'] == 4]:# and graph[e[0]][e[1]]['bo'] == 1]:, by def the bo would be 1
-        branchIntList =  [frozenset((edges[1], x)) for x in graph.neighbors(edges[0]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C' and x != edges[1]] + [frozenset((edges[0], x)) for x in graph.neighbors(edges[1]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C' and x != edges[0]]
-        eList.extend(branchIntList)
-    rejected_branches = set(Counter(eList).keys()).intersection([frozenset(e) for e in graph.edges])
-    return len(Counter(eList)) - len(rejected_branches)
-
-def branching_penalty2(graph, edges_to_cut_list):
-    influential_edges =  [e for e in edges_to_cut_list if graph.nodes[e[0]]['element'] == 'C' and graph.nodes[e[1]]['element'] == 'C' and graph.nodes[e[0]]['ed'] == 4 and graph.nodes[e[1]]['ed'] == 4]
-    eList = []
-    for edges in influential_edges:# and graph[e[0]][e[1]]['bo'] == 1]:, by def the bo would be 1
-        branchIntList =  [frozenset((edges[1], x)) for x in graph.neighbors(edges[0]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C' and x != edges[1]] + [frozenset((edges[0], x)) for x in graph.neighbors(edges[1]) if graph.nodes[x]['ed'] == 4 and graph.nodes[x]['element'] == 'C' and x != edges[0]]
-        eList.extend(branchIntList)
-    rejected_branches = set(Counter(eList).keys()).intersection([frozenset(e) for e in graph.edges])
-    branchEdges = set(Counter(eList).keys()) - rejected_branches
-    nodeList = [x for x in miscellaneous.flatten(influential_edges) if 'branch' in graph.nodes(data=True)[x]]
-    return sum( [np.count_nonzero(np.array([node in x for x in branchEdges]))/graph.nodes[node]['branch'] for node in nodeList])
-
-def hybridisation_penalty(graph, edges_to_cut_list):
-    penalty = 0
-    influential_edges = [e for e in edges_to_cut_list if graph[e[0]][e[1]]['bo'] >= 2]
-    nodeList = list(set(chain(*influential_edges)))
-    for node in nodeList:
-        edges = [e for e in influential_edges if node in e]
-        # edges = miscellaneous.node_in_edgelist(influential_edges, node)
-        boList = [graph[e[0]][e[1]]['bo'] for e in edges]
-        deltaboList = [x - 1 for x in boList]
-        # penalty += sum(deltaboList)
-        penalty += (sum(deltaboList) / graph.nodes[node]['ed']) # relative error
-    return penalty
+    boList = [int(graph[edges[0]][edges[1]]['bo']) for edges in edges_to_cut_list]
+    penaltyList = [(bo**2 - bo * 1)/bo**2 for bo in boList]
+    
+    return round(sum(penaltyList)/len(penaltyList),4) #normalised
 
 
 def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
@@ -85,21 +53,21 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
         for comp in connected_comp_list:
             comp_cs_list = [graph.nodes[x]['pi']/len(comp) for x in list(comp)]
             sg_cs_list.extend(comp_cs_list)
-            # average_comp_cs = sum(comp_cs_list) / len(comp_cs_list)
-            # subsystem_cs_list.append(average_comp_cs)
-        # print('sg_cs_list', sg_cs_list)
         average_sg_cs = sum(sg_cs_list) / len(sg_cs_list)
         subsystem_cs_list.append(average_sg_cs)
     # penalty = np.sum(np.array(subsystem_cs_list) - np.array(system_cs_list))
-    penalty = np.sum(np.divide(np.array(subsystem_cs_list) - np.array(system_cs_list), np.array(system_cs_list)) ) # relative error
-    return round(penalty,4)
+    penaltyList = list(np.divide(np.array(subsystem_cs_list) - np.array(system_cs_list), np.array(system_cs_list)))  # relative error list
+    penaltyList = [miscellaneous.sigmoid_conj_hyper(x, 'conj') for x in penaltyList] # transformation ensures penalty is between 0 and 1
+
+    return round(sum(penaltyList)/len(penaltyList),4) #normalised
 
 
 def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list):
     if len(connectionDict) == 0:
         return 0
     
-    penalty = 0
+    penaltyList = []
+    bondsepweights = []
     for connection in connectionDict:
         donor = connection[0]
         acceptor = connection[1]
@@ -111,7 +79,7 @@ def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_c
         influential_edges = list( (set(edges_to_cut_list).intersection(connectionDict[connection].simple_paths)).union((set(edges_to_cut_list).intersection(donorDict[donor].edges))).union((set(edges_to_cut_list).intersection(acceptorDict[acceptor].edges))).union((set([e[::-1] for e in edges_to_cut_list]).intersection(connectionDict[connection].simple_paths))).union(set([e[::-1] for e in edges_to_cut_list]).intersection(donorDict[donor].edges)).union(set([e[::-1] for e in edges_to_cut_list]).intersection(acceptorDict[acceptor].edges)) )
         #these are the edges that will impact the donor-acceptor pair
         if influential_edges:
-            # print(connection)
+            # print('connection', connection)
 
             da_graph = nx.Graph()
             nodeList = donorDict[donor].nodes + acceptorDict[acceptor].nodes + [x for x in set(chain(*connectionDict[connection].simple_paths))]
@@ -132,10 +100,6 @@ def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_c
                 cc_nodes = [x for x in cc]
                 dnodes = miscellaneous.donor_acceptor_nodes(donorDict[donor], cc_nodes)
                 anodes = miscellaneous.donor_acceptor_nodes(acceptorDict[acceptor], cc_nodes)
-
-                # print('dnodes', dnodes)
-                # print('anodes', anodes)
-
                 if dnodes:
                     donor_electrons = sum([donorDict[donor].node_electrons[x] for x in dnodes])
                     da_node_number = len(dnodes) + len(anodes)
@@ -147,21 +111,24 @@ def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_c
                     da_node_number = len(dnodes) + len(anodes)
                     # print('as', -1 * donor_electrons/da_node_number)
                     asList = np.append(asList, -1 * donor_electrons/da_node_number)
-            
-            divisor = sum([donorDict[donor].node_electrons[x] for x in donorDict[donor].nodes])/(len(donorDict[donor].nodes) + len(acceptorDict[acceptor].nodes))
-            # connection_penalty = 1/connectionDict[connection].bond_separation * (np.average(dsList) + np.average(asList))
-            connection_penalty = 1/connectionDict[connection].bond_separation * (np.average(dsList) + np.average(asList))/divisor # relative error 
-            # print('connection_penalty', connection_penalty)
-            penalty += connection_penalty
 
-    return round(penalty,4)
+            bondsepweights.append(1/connectionDict[connection].bond_separation)
+            connection_penalty = np.average(dsList) + np.average(asList)
+            # print('connection_penalty', connection_penalty)
+            penaltyList.append(connection_penalty)
+
+    # print('hyper penaltyList: ', penaltyList)
+    bondsepweights = np.array(bondsepweights)
+    penaltyList = np.array([miscellaneous.sigmoid_conj_hyper(x, 'hyper') for x in penaltyList]) # transformation ensures penalty is between 0 and 1
+    fpenalty = np.dot(bondsepweights, penaltyList)/penaltyList.size # bond separation weights are considered
+    return round(fpenalty,4) #normnalised
 
 
 def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
     if len(aromaticDict) == 0:
         return 0
 
-    penalty = 0 
+    penaltyList = []
     for asys in aromaticDict:
         #box edges go here
         boxLabelList = aromaticDict[asys].boxLabelList
@@ -179,9 +146,9 @@ def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
 
         inc_penalty = sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList)
         # penalty += inc_penalty
-        penalty += (inc_penalty/len(miscellaneous.flatten(aromaticDict[asys].cycle_list))) # relative error?
+        penaltyList.append(inc_penalty/len(miscellaneous.flatten(aromaticDict[asys].cycle_list))) # relative error?
 
-    return penalty
+    return round(sum(penaltyList)/len(penaltyList), 4)
 
 def ring_strain(size):
     m, d, a, b, l = 1.30822, -125.911, 0.312439, 1.19633, -188.39
@@ -200,7 +167,7 @@ def ring_penalty(graph, cycleDict, edges_to_cut_list):
     impactedCycleSize = [len(cycleDict[c].edgeList) for c in impactedCycles]
     totalstrain = round(sum([ring_strain(x) for x in impactedCycleSize]),4)
     # return abs(totalstrain)
-    return abs(totalstrain)/658.7 # relative error
+    return round(abs(totalstrain)/658.7,4) # relative error
 
 def reference_vol(atoms, minAtomNo):
     atomCount = Counter(atoms)
@@ -215,16 +182,12 @@ def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
     tgraph.remove_edges_from(edges_to_cut_list)
     # print([x for x in nx.connected_components(tgraph)], file=open('connectedCompVol.dat', 'a'))
     connectedComp = (tgraph.subgraph(x) for x in nx.connected_components(tgraph))
-    # penalty = 0 
-    # for sg in connectedComp:
-    #     # penalty += (refVol - load_data.get_volume(sg, proxMatrix))**2
-    #     penalty += (load_data.get_volume(sg, proxMatrix)/refVol - 1)**2
-    penalty = sum([(load_data.get_volume(sg, proxMatrix)/refVol - 1)**2 for sg in connectedComp])
-    return penalty
+    penaltyList = [(load_data.get_volume(sg, proxMatrix)/refVol - 1)**2 for sg in connectedComp]
+    return round(sum(penaltyList)/len(penaltyList),4)
 
 
 def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
-    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), branching_penalty(graph, edges_to_cut_list), hybridisation_penalty(graph, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
     # print('penalty_list:', penalty_list)
     beta_values = np.array(betalist)

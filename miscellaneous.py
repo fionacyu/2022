@@ -94,15 +94,7 @@ def get_pi_elec(conjNodeList, conjEdgeList, graph):
             if i == 0 or i == len([x for x in conjNodeList]) - 1:
                 # need to check for the fact that the atom is connected to other pi systems not part of the conjugated system or separate conjugated systems
                 edgeList = graph_characterisation.get_edges_of_node(n, [x for x in graph.edges if graph[x[0]][x[1]]['bo'] >= 2]) #edges the node is part of which is double bond or triple
-                # edgeList = edgeList + [x[::-1] for x in edgeList]
-                # print('edgeList', edgeList)
-                # reject_edges = [x for x in edgeList if x in conjugated_edges[j] or x[::-1] in conjugated_edges[j]] 
-                # reject_edges = list(set(edgeList).intersection(conjugated_edges[j])) + list(set([x[::-1] for x in edgeList]).intersection(conjugated_edges[j]))
                 reject_edges = list( (set(edgeList).intersection(conjEdgeList)).union((set([x[::-1] for x in edgeList]).intersection(conjEdgeList)) ))
-                # print('reject_edges', reject_edges)
-                # edgeList = [x for x in edgeList if x not in reject_edges] # non conjugated edges the node is bonded to
-                # edgeList = list(set(edgeList) - set(reject_edges))
-                # edgeList = [x for x in edgeList if x not in reject_edges and x[::-1] not in reject_edges]
                 edgeList = [x for x in edgeList if len(set([x]).intersection(reject_edges)) == 0 and  len(set([x[::-1]]).intersection(reject_edges)) == 0]
                 # print('edgeList after removal', edgeList)
 
@@ -119,11 +111,21 @@ def get_pi_elec(conjNodeList, conjEdgeList, graph):
                 tupleList.append((n, piELec))
     
     return tupleList
-   
+
+def sigmoid_conj_hyper(x, situation):
+    # a - exponent, d - translation, x -variable
+    if situation == 'conj':
+        a = 5.2933
+        d = 1
+    elif situation == 'hyper':
+        a = 10.5866
+        d = 0.5
+    # parameters a and b are obtained from fitting where at x = 0, sigmoid function outputs 0.005
+    return pow(1 + math.exp(-1 * a * (x - d) ), -1)
+
+
 def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
-    # print('edges_to_cut_list', edges_to_cut_list)
-    # penalty_list = [calculate_penalty.bond_order_penalty(graph, edges_to_cut_list), calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.ring_penalty(graph, cycleDict, edges_to_cut_list), calculate_penalty.branching_penalty(graph, edges_to_cut_list), calculate_penalty.hybridisation_penalty(graph, edges_to_cut_list), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
-    penalty_list = [0, calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.ring_penalty(graph, cycleDict, edges_to_cut_list), calculate_penalty.branching_penalty2(graph, edges_to_cut_list), calculate_penalty.hybridisation_penalty(graph, edges_to_cut_list), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+    penalty_list = [calculate_penalty.bond_order_penalty(graph, edges_to_cut_list), calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.ring_penalty(graph, cycleDict, edges_to_cut_list), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
     print(("%-20s " * len(penalty_list)) % tuple([str(i) for i in penalty_list]), file=open('penalties.dat', "a"))
     print(', '.join(str(j) for j in pos),file=open('positions.dat', "a"))

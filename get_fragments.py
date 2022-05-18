@@ -12,13 +12,15 @@ import networkx as nx
 import numpy as np
 import time
 import multiprocessing as mp
+from collections import Counter
 import os
+import json
 
 mp.set_start_method('fork')
 
 os.system('rm *.dat')
 os.system('rm -r fragxyz')
-penNames = ['bo', 'aromaticity', 'ring', 'branching', 'hybridisation', 'conjugation', 'hyperconjugation', 'volume']
+penNames = ['bo', 'aromaticity', 'ring',  'conjugation', 'hyperconjugation', 'volume']
 print(("%-20s " * len(penNames)) % tuple([str(i) for i in penNames]), file=open('penalties.dat', "a"))
 
 parser = argparse.ArgumentParser()
@@ -116,16 +118,6 @@ print('conjugated_edges', conjugated_edges)
 # print('bond order penalty', bo_penalty)
 # print('bo_penalty time', time.process_time() - tbo)
 
-# tbranch = time.process_time()
-# branch_penalty = calculate_penalty.branching_penalty(G, [x for x in edges_to_cut_list])
-# print('branch_penalty', branch_penalty)
-# print('branch_penalty time', time.process_time() - tbranch)
-
-# thybrid = time.process_time()
-# hybrid_penalty = calculate_penalty.hybridisation_penalty(G, [x for x in edges_to_cut_list])
-# print('hybrid_penalty', hybrid_penalty)
-# print('hybrid_penalty time', time.process_time() - thybrid)
-
 # taroma = time.process_time()
 # aromatic_penalty = calculate_penalty.aromaticity_penalty(G, aromaticDict, [x for x in edges_to_cut_list])
 # print('aromatic_penalty', aromatic_penalty)
@@ -152,9 +144,7 @@ print('conjugated_edges', conjugated_edges)
 # print('total time: ', final_time)
 
 # t8 = time.process_time()
-# minAtomNo = np.random.randint(low=5, high=15, size=1)[0]
-# betalist = [1,1,1.3,1,1,1.6,1.6,0.8]
-betalist = [1,1,1,1,1,1,1,1]
+betalist = [1,1,1,1,1,1]
 # total_penalty = calculate_penalty.full_penalty(atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo)
 # print('total_penalty', total_penalty)
 # print('total penalty time', time.process_time() - t8)
@@ -163,7 +153,15 @@ feasible_edges = optimize.get_feasible_edges(G)
 print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', "a"))
 dim = len(feasible_edges)
 pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo, dim)
-# print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
+print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
 
 symbolList, coordList, weightList, idList = miscellaneous.get_fragments(G,  optimize.convert_bvector_edges(pos, feasible_edges), coordinates)
+# print('symbolList', symbolList)
+# print('coordList', coordList)
+# print('weightList', weightList)
+# print('idList', idList)
+molDict = {'fragments': {'nfrag': len(Counter(idList)), 'fragid': idList, 'fragment_charges': [0 for _ in range(len(Counter(idList)))], 'broken_bonds': [] }, 'symbols': symbolList, 'geometry': coordList}
+# print(molDict, file=open('frag.json', 'a'))
+with open('frag.json', 'w') as fp:
+    json.dump(molDict, fp, indent=4)
 miscellaneous.fragment_xyz(symbolList, coordList, idList)
