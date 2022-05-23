@@ -112,16 +112,12 @@ def get_pi_elec(conjNodeList, conjEdgeList, graph):
     
     return tupleList
 
-def sigmoid_conj_hyper(x, situation):
-    # a - exponent, d - translation, x -variable
-    if situation == 'conj':
-        a = 5.2933
-        d = 1
-    elif situation == 'hyper':
-        a = 10.5866
-        d = 0.5
-    # parameters a and b are obtained from fitting where at x = 0, sigmoid function outputs 0.005
-    return pow(1 + math.exp(-1 * a * (x - d) ), -1)
+def sigmoid_conj_hyper(x, max, tol=0.005):
+    # the min value is 0
+    # a - exponent, x -variable
+    a = -1 / max * math.log(tol/(2 - tol))
+    return (1 - math.exp(-1 * a * x))/(1 + math.exp(-1 * a * x))
+    
 
 
 def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):

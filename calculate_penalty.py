@@ -30,6 +30,7 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
 
     system_cs_list = []
     subsystem_cs_list = []
+    subsystem_cs_worst = []
     for system in unique_conjugated_systems:
         # print('system', system)
         # getting the original cs's
@@ -55,9 +56,10 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
             sg_cs_list.extend(comp_cs_list)
         average_sg_cs = sum(sg_cs_list) / len(sg_cs_list)
         subsystem_cs_list.append(average_sg_cs)
+        subsystem_cs_worst.append(len(nodeList) - 1)
     # penalty = np.sum(np.array(subsystem_cs_list) - np.array(system_cs_list))
     penaltyList = list(np.divide(np.array(subsystem_cs_list) - np.array(system_cs_list), np.array(system_cs_list)))  # relative error list
-    penaltyList = [miscellaneous.sigmoid_conj_hyper(x, 'conj') for x in penaltyList] # transformation ensures penalty is between 0 and 1
+    penaltyList = [miscellaneous.sigmoid_conj_hyper(penaltyList[i], subsystem_cs_worst[i]) for i in range(len(penaltyList))] # transformation ensures penalty is between 0 and 1
 
     return round(sum(penaltyList)/len(penaltyList),4) #normalised
 
@@ -68,6 +70,7 @@ def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_c
     
     penaltyList = []
     bondsepweights = []
+    worstscore = []
     for connection in connectionDict:
         donor = connection[0]
         acceptor = connection[1]
@@ -116,10 +119,11 @@ def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_c
             connection_penalty = np.average(dsList) + np.average(asList)
             # print('connection_penalty', connection_penalty)
             penaltyList.append(connection_penalty)
+            worstscore.append(sum([donorDict[donor].node_electrons[x] for x in donorDict[donor].nodes]))
 
     # print('hyper penaltyList: ', penaltyList)
     bondsepweights = np.array(bondsepweights)
-    penaltyList = np.array([miscellaneous.sigmoid_conj_hyper(x, 'hyper') for x in penaltyList]) # transformation ensures penalty is between 0 and 1
+    penaltyList = np.array([miscellaneous.sigmoid_conj_hyper(penaltyList[i], worstscore[i]) for i in range(len(penaltyList))]) # transformation ensures penalty is between 0 and 1
     fpenalty = np.dot(bondsepweights, penaltyList)/penaltyList.size # bond separation weights are considered
     return round(fpenalty,4) #normnalised
 

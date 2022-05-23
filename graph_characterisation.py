@@ -53,37 +53,6 @@ def hybridisation2(graph, proxMatrix, tol=0.003):
         # print('elecDom', elecDom)
 
         graph.nodes[nodeNumber]['ed'] = elecDom
-    # print(edgeAttr)
-
-    # # determining edges
-    # mask = proxMatrix != 0.0
-    # print(mask)
-    # indarray = np.where(mask)
-    # t = time.process_time()
-    # for i in range(len(indarray[0])):
-    #     node1, node2 = indarray[0][i] + 1, indarray[1][i] + 1
-    #     # print(node1, node2)
-    #     # print(proxMatrix[node1-1, node2-1])
-    #     t1 = time.process_time()
-    #     # if len(set([graph.nodes[node1]['box']]).intersection(boxing.neighbouring_boxes(graph.nodes[node2]['box'], boxDict))) > 0 and proxMatrix[node1-1, node2-1] < 3:
-    #     if proxMatrix[node1-1, node2-1] < 3:
-    #         atom1, atom2 = graph.nodes[node1]['element'], graph.nodes[node2]['element']
-    #         bo = load_data.get_bond_order(atom1, atom2, proxMatrix[node1-1, node2-1], tol)
-    #         if bo != 0:
-    #             if len(set([(node1, node2), (node2, node1)]).intersection(edgeAttr)) == 0:
-    #                 edgeAttr[(node1, node2)] = {'bo': bo}
-    # print('getting edges time', time.process_time() - t)
-    # graph.add_edges_from([k for k, _ in edgeAttr.items()])
-    # nx.set_edge_attributes(graph, edgeAttr)
-
-    # # defining ed of nodes
-    # for node in ha:
-    #     bondED = graph.degree[node]
-    #     bondElec = sum([graph[x][node]['bo'] * 2 for x in graph.neighbors(node)])
-    #     valElec = load_data.get_valence(graph.nodes[node]['element'])
-    #     elecDom = math.ceil(bondED + 0.5 * (valElec - 0.5 * bondElec - graph.nodes[node]['charge'])) 
-    #     graph.nodes[node]['ed'] = elecDom
-    
     graph.add_edges_from([k for k, _ in edgeAttr.items()])
     nx.set_edge_attributes(graph, edgeAttr)
 
