@@ -46,29 +46,25 @@ def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict): # return
         for prod in prodList:
             # cycles = sorted(cycle_edge_list[prod[0]])
             cycles = list(set(chain(*cycleDict[prod[0]].edgeList)))
+            # print('cycles', cycles)
             conjugated = sorted([x for x in set(chain(*conjugated_edges[prod[1]]))])
+            # print('conjugated', conjugated)
 
             # check if the rings are conjugated
             if set(cycles).issubset(conjugated):
-                # print('hello')
-                # electrons = 0
-                # # for node in sorted([x for x in set(chain(*conjugated_edges[prod[1]]))]):
-                # for node in sorted([x for x in cycles]):    
-                #     electrons = electrons + graph.nodes[node]['pi']
-                
                 electrons = sum([graph.nodes[x]['pi'] for x in cycles])
                 # print('electrons', electrons)
                 # check if huckel's rule is obeyed
                 if electrons % 4 == 2: # huckel's rule: 4n + 2
-                    
                     # now need to check if it is planar
-                    # print('check for planarity')
 
                     distanceList = [np.linalg.norm(np.array(coordinates[x -1])) for x in cycles]
                     # chooses the 3 points closest to the origin to form the basis of vectors for the plane 
                     # print(distanceList)
-                    idx = np.argpartition(distanceList, 3)
-                    # print(idx)
+                    if len(distanceList) > 3:
+                        idx = np.argpartition(distanceList, 3)
+                    elif len(distanceList) == 3:
+                        idx = [0,1,2]
 
                     u = np.array(coordinates[cycles[idx[0]] - 1])
                     v = np.array(coordinates[cycles[idx[1]] - 1])
@@ -100,7 +96,7 @@ def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict): # return
 
 def classify_aromatic_systems(graph, conjugated_edges, coordinates, cycleDict):
     small_aromatic_cycles = check_aromaticity(graph, conjugated_edges, coordinates, cycleDict)
-    # print('small_aromatic_cycles', small_aromatic_cycles)
+    print('small_aromatic_cycles', small_aromatic_cycles)
     edgeList = miscellaneous.flatten(small_aromatic_cycles)
     nodeList = [x for x in set(chain(*miscellaneous.flatten(small_aromatic_cycles)))]
 
@@ -115,16 +111,17 @@ def classify_aromatic_systems(graph, conjugated_edges, coordinates, cycleDict):
         
         aromaticsys = aromatic_system()
         aromaticsys.add_size(len(sg.edges))
-
         bedgeList = [e for e in sg.edges() if sum([e in x for x in small_aromatic_cycles]) >= 2]
-        cycleList = [asys for asys in small_aromatic_cycles if len(set(bedgeList).intersection(asys)) > 0]
-        intersectionList = [list(set(bedgeList).intersection(asys)) for asys in small_aromatic_cycles]
-        # nonbe_cycleList = [[x for x in cycle if x not in intersectionList[i]] for i, cycle in enumerate(cycleList)]
-        nonbe_cycleList = [list(set(cycle) - set(intersectionList[i])) for i, cycle in enumerate(cycleList)]
-
+        if len(bedgeList) > 0:
+            cycleList = [asys for asys in small_aromatic_cycles if len(set(bedgeList).intersection(asys)) > 0]
+            intersectionList = [list(set(bedgeList).intersection(asys)) for asys in small_aromatic_cycles]
+            nonbe_cycleList = [list(set(cycle) - set(intersectionList[i])) for i, cycle in enumerate(cycleList)]
+            aromaticsys.add_nonbridging_edges(nonbe_cycleList)
+        else:
+            cycleList = [[e for e in sg.edges]]
+            aromaticsys.add_nonbridging_edges(cycleList)
         aromaticsys.add_cycle(cycleList)
         aromaticsys.add_bridging_edges(bedgeList)
-        aromaticsys.add_nonbridging_edges(nonbe_cycleList)
         aromaticDict['aroma%d' % count] = aromaticsys
     
     return aromaticDict 

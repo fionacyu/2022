@@ -13,7 +13,10 @@ def bond_order_penalty(graph, edges_to_cut_list):
     boList = [int(graph[edges[0]][edges[1]]['bo']) for edges in edges_to_cut_list]
     penaltyList = [(bo**2 - bo * 1)/bo**2 for bo in boList]
     
-    return round(sum(penaltyList)/len(penaltyList),4) #normalised
+    if penaltyList:
+        return round(sum(penaltyList)/len(penaltyList),4) #normalised
+    else:
+        return 0
 
 
 def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
@@ -59,8 +62,8 @@ def conjugation_penalty(graph, edges_to_cut_list, conjugated_edges):
         subsystem_cs_worst.append(len(nodeList) - 1)
     # penalty = np.sum(np.array(subsystem_cs_list) - np.array(system_cs_list))
     penaltyList = list(np.divide(np.array(subsystem_cs_list) - np.array(system_cs_list), np.array(system_cs_list)))  # relative error list
+    print(("%-20s " * 2) % tuple([round(sum(penaltyList)/len(penaltyList),4), round(sum(subsystem_cs_worst)/len(subsystem_cs_worst), 4)]), file=open('conjugation.dat', "a"))
     penaltyList = [miscellaneous.sigmoid_conj_hyper(penaltyList[i], subsystem_cs_worst[i]) for i in range(len(penaltyList))] # transformation ensures penalty is between 0 and 1
-
     return round(sum(penaltyList)/len(penaltyList),4) #normalised
 
 
@@ -124,8 +127,11 @@ def hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_c
     # print('hyper penaltyList: ', penaltyList)
     bondsepweights = np.array(bondsepweights)
     penaltyList = np.array([miscellaneous.sigmoid_conj_hyper(penaltyList[i], worstscore[i]) for i in range(len(penaltyList))]) # transformation ensures penalty is between 0 and 1
-    fpenalty = np.dot(bondsepweights, penaltyList)/penaltyList.size # bond separation weights are considered
-    return round(fpenalty,4) #normnalised
+    if penaltyList.size == 0:
+        return 0
+    else:
+        fpenalty = np.dot(bondsepweights, penaltyList)/penaltyList.size # bond separation weights are considered
+        return round(fpenalty,4) #normnalised
 
 
 def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
@@ -150,6 +156,7 @@ def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
 
         inc_penalty = sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in nonbe_cycle_ind_list]) + sum([len(aromaticDict[asys].nonbridging_edges[x]) for x in be_cycle_ind_list]) + len(bedgeList)
         # penalty += inc_penalty
+        # print('aromaticDict[asys].cycle_list', aromaticDict[asys].cycle_list)
         penaltyList.append(inc_penalty/len(miscellaneous.flatten(aromaticDict[asys].cycle_list))) # relative error?
 
     return round(sum(penaltyList)/len(penaltyList), 4)
