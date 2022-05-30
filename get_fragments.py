@@ -46,15 +46,15 @@ else:
 t2 = time.process_time()
 G = nx.Graph()
 G = boxing.box_classification(coordinates, G, nodeList) # d parameter goes at the end of this function
-print('boxing.box_classification time: ', time.process_time() - t2)
+# print('boxing.box_classification time: ', time.process_time() - t2)
 
 t1 = time.process_time()
 G, conjugated_edges, proxMatrix = graph_characterisation.main(G, coordinates)
-print('graph_characterisation time: ', time.process_time() - t1)
+# print('graph_characterisation time: ', time.process_time() - t1)
 
 t3 = time.process_time()
 cycleDict = rings.edgeList_dictionary(G)
-print('defining rings time: ', time.process_time() - t3)
+# print('defining rings time: ', time.process_time() - t3)
 
 # print('rings ***')
 # for cycle in cycleDict:
@@ -63,17 +63,17 @@ print('defining rings time: ', time.process_time() - t3)
 
 t4 = time.process_time()
 cycleDict = boxing.classify_cycles(G, cycleDict)
-print('ring classification boxes time: ', time.process_time() - t4)
+# print('ring classification boxes time: ', time.process_time() - t4)
 # print('cycleDict', cycleDict)
 
 t5 = time.process_time()
 aromaticDict = aromaticity.classify_aromatic_systems(G, conjugated_edges, coordinates, cycleDict)
-print('aromaticity classification time: ', time.process_time() - t5)
+# print('aromaticity classification time: ', time.process_time() - t5)
 
 t6 = time.process_time()
 donorDict, acceptorDict, connectionDict = hyperconj.classify_donor_acceptor_connections(G, conjugated_edges)
-print('len of connectionDict', len(connectionDict))
-print('hyerpconjugation classification time: ', time.process_time() - t6)
+# print('len of connectionDict', len(connectionDict))
+# print('hyerpconjugation classification time: ', time.process_time() - t6)
 
 # for donor in donorDict:
 #     print(donor, donorDict[donor].nodes)
@@ -87,8 +87,8 @@ print('hyerpconjugation classification time: ', time.process_time() - t6)
 # defining boxes
 t7 = time.process_time()
 donorDict, acceptorDict, aromaticDict = boxing.all_classification(G, donorDict, acceptorDict, cycleDict, aromaticDict) 
-print('boxing classification of donorDict, acceptorDict, aromaticDict time: ', time.process_time() - t7)
-print('conjugated_edges', conjugated_edges)
+# print('boxing classification of donorDict, acceptorDict, aromaticDict time: ', time.process_time() - t7)
+# print('conjugated_edges', conjugated_edges)
 # print('conjugated nodes', set(chain(*conjugated_edges[0])))
 
 # for edge in G.edges(data=True):
@@ -144,7 +144,7 @@ print('conjugated_edges', conjugated_edges)
 # print('total time: ', final_time)
 
 # t8 = time.process_time()
-betalist = [1,1,1,1,1,1]
+betalist = [0,0,0,0,0,1]
 # total_penalty = calculate_penalty.full_penalty(atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo)
 # print('total_penalty', total_penalty)
 # print('total penalty time', time.process_time() - t8)
@@ -160,7 +160,14 @@ symbolList, coordList, weightList, idList = miscellaneous.get_fragments(G,  opti
 # print('coordList', coordList)
 # print('weightList', weightList)
 # print('idList', idList)
-molDict = {'fragments': {'nfrag': len(Counter(idList)), 'fragid': idList, 'fragment_charges': [0 for _ in range(len(Counter(idList)))], 'broken_bonds': [] }, 'symbols': symbolList, 'geometry': coordList}
+smallestfrags = []
+for count, weight in enumerate(weightList):
+    if weight == -1:
+        smallestfrags.append(idList[count])
+smallestfrags =  set(smallestfrags)
+print(','.join(str(x) for x in smallestfrags), file=open('smallestfrag.dat', 'a'))
+
+molDict = {'fragments': {'nfrag': len(Counter(idList)), 'fragid': idList, 'fragment_charges': [0 for _ in range(len(Counter(idList)))], 'weights': weightList, 'broken_bonds': [] }, 'symbols': symbolList, 'geometry': coordList}
 # print(molDict, file=open('frag.json', 'a'))
 with open('frag.json', 'w') as fp:
     json.dump(molDict, fp, indent=4)

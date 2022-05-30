@@ -96,21 +96,6 @@ def check_hybrid(graph): #check for hybridisation of oxygen, sulfur and nitrogen
 
         return graph
 
-# def branching(graph):
-#     cnodes = [x for x in graph.nodes if graph.nodes[x]['element'] == 'C' and graph.nodes[x]['ed'] == 4]
-#     for cn in cnodes:
-#         neighList = list(set(nx.dfs_preorder_nodes(graph, source=cn, depth_limit=2)) - set(graph.neighbors(cn)) - {cn})
-#         neigh2nd = [x for x in neighList if len(set([x]).intersection(cnodes)) > 0]
-#         pathList = [list(nx.all_simple_paths(graph, source=cn, target=neigh, cutoff=2))[0] for neigh in neigh2nd]
-#         pathList = [x for x in pathList if len(x) == 3]
-#         cedList = [graph.nodes[x[1]]['ed'] for x in pathList]
-#         branches = Counter(cedList)[4]
-#         if branches != 0:
-#             graph.nodes[cn]['branch'] = branches
-#     return graph
-
-
-
 def get_edges_of_node(node_label, edges_list):
     edgeList = [x for x in edges_list if node_label in x]
     return edgeList
@@ -189,11 +174,6 @@ def conjugate_region(graph): # returns set of nodes(atoms) whose electrons are c
                         conjugated_edges.append([list(x) for x in map(nx.utils.pairwise, pair_path)][0])
                         conjugated_nodes.append(pair_path[0])
 
-    # for conj_path in conjugated_edges:
-    #     for edge in conj_path:
-    #         # print(edge)
-    #         # print(graph[edge[0]][edge[1]])
-    #         graph[edge[0]][edge[1]]['conjugated'] = 'yes'
     for e in [x for x in graph.edges]:
         if e in miscellaneous.flatten(conjugated_edges) or e[::-1] in miscellaneous.flatten(conjugated_edges):
             graph[e[0]][e[1]]['conjugated'] = 'yes'

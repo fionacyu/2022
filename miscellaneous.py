@@ -170,7 +170,7 @@ def fragment_xyz(symbolList, coordList, idList):
         print('%s\n' % v, file=open('fragxyz/%s.xyz' % k, 'a'))
 
     for i in range(len(symbolList)):
-        print(symbolList[i], ', '.join(str(j) for j in coordList[3*i: 3*i + 3]), file=open('fragxyz/%s.xyz' % idList[i], 'a'))
+        print(symbolList[i], '\t'.join(str(j) for j in coordList[3*i: 3*i + 3]), file=open('fragxyz/%s.xyz' % idList[i], 'a'))
         
 def hyperconj_connections_para(graphDict, comb, donorDict, acceptorDict):
     donorLabel = comb[0]
