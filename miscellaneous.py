@@ -9,6 +9,7 @@ import networkx as nx
 import numpy as np
 import os
 from itertools import product
+from itertools import combinations
 import math
 import time
 
@@ -136,6 +137,8 @@ def get_fragments(graph, optimal_edges_to_cut, coordinates):
     fgraph.remove_edges_from(optimal_edges_to_cut)
 
     symbolList, coordList, weightList, idList = [], [], [], []
+    hfragDict = {}
+    fragNodes = {}
     for i, cc in enumerate(nx.connected_components(fgraph)):
         symbols = [graph.nodes[x]['element'] for x in cc]
         coords = flatten([coordinates[x-1] for x in cc])
@@ -146,32 +149,110 @@ def get_fragments(graph, optimal_edges_to_cut, coordinates):
         coordList.extend(coords)
         weightList.extend(weights)
         idList.extend(fragids)
+
+        fragNodes[i+1] = [x for x in cc]
+
+        nodes_affected = set(flatten(optimal_edges_to_cut)).intersection(cc)
+        edges_cut = [e for e in optimal_edges_to_cut if any([e[0] in nodes_affected, e[1] in nodes_affected])]
+
+        for edge in edges_cut:
+            if edge not in hfragDict:
+                hfragDict[edge] = [i+1]
+            else:
+                hfragDict[edge].append(i+1)
     
     count = len([x for x in nx.connected_components(fgraph)]) + 1
+    monids = range(1,count)
+    monpairs = [x for x in combinations(monids, 2)]
+    # print('monpairs', monpairs)
+    existing_pairs = []
     for edge in optimal_edges_to_cut:
         nodes = nx.node_connected_component(fgraph, edge[0]) | nx.node_connected_component(fgraph, edge[1])
         symbols = [graph.nodes[x]['element'] for x in nodes]
         coords = flatten([coordinates[x-1] for x in nodes])
-        weights = [1] * len(nodes)
-        fragids = [count] * len(nodes)
+        
+        for pair in monpairs:
+            # print('mon nodes', set(fragNodes[pair[0]]) | set(fragNodes[pair[1]]))
+            # print('dimer nodes', set(nodes))
+            if (set(fragNodes[pair[0]]) | set(fragNodes[pair[1]])).issubset(set(nodes)):
 
-        symbolList.extend(symbols)
-        coordList.extend(coords)
-        weightList.extend(weights)
-        idList.extend(fragids)
+                if pair not in existing_pairs:
+                    weights = [1] * len(nodes)
+                    fragids = [count] * len(nodes)
 
-        count += 1
-    
-    return symbolList, coordList, weightList, idList
+                    symbolList.extend(symbols)
+                    coordList.extend(coords)
+                    weightList.extend(weights)
+                    idList.extend(fragids)
 
-def fragment_xyz(symbolList, coordList, idList):
+                    print(count, pair[0], pair[1], file=open('dimercomp.dat', 'a'))
+                    existing_pairs.append(pair)
+
+                    fragNodes[count] = [x for x in nodes]
+
+                    nodes_affected = set(flatten(optimal_edges_to_cut)).intersection(nodes) 
+                    edges_cut = [e for e in optimal_edges_to_cut if any([e[0] in nodes_affected, e[1] in nodes_affected])]
+                    edges_cut.remove(edge)
+                    for e in edges_cut:
+                        if e not in hfragDict:
+                            hfragDict[e] = [count]
+                        else:
+                            hfragDict[e].append(count)
+                    count += 1
+
+
+    return symbolList, coordList, weightList, idList, hfragDict, fragNodes
+
+def fragment_xyz(symbolList, coordList, idList, graph, coordinates, hfragDict, fragNodes):
     os.system('mkdir fragxyz')
-    for k, v in Counter(idList).items():
-        print('%s\n' % v, file=open('fragxyz/%s.xyz' % k, 'a'))
+    # for k, v in Counter(idList).items():
+    #     print('%s\n' % v, file=open('fragxyz/%s.xyz' % k, 'a'))
 
     for i in range(len(symbolList)):
         print(symbolList[i], '\t'.join(str(j) for j in coordList[3*i: 3*i + 3]), file=open('fragxyz/%s.xyz' % idList[i], 'a'))
+    
+    for edge, idlist in hfragDict.items():
+        for id in idlist:
+            # print('id', id)
+            # print('edge', edge)
+            # print('fragNodes[id]', fragNodes[id])
+            try:
+                nodeh = min(set(edge) - set(fragNodes[id]))  # this node will be replaced with hydrogen
+            except ValueError:
+                break
+            othernode = min(set(edge).intersection(fragNodes[id]))
+
+            nodehel = graph.nodes[nodeh]['element']
+            othernodeel = graph.nodes[othernode]['element']
+
+            if nodehel == 'C':
+                degree = graph.degree[nodeh]
+                nodehel = 'C' + str(degree)
+            
+            if othernodeel == 'C':
+                degree = graph.degree[othernode]
+                othernodeel = 'C' + str(degree)
+
+            scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
+            hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
+            # print('hcoords', hcoords)
+            print('H', '\t'.join(str(hc) for hc in hcoords), file=open('fragxyz/%s.xyz' % id, 'a'))
+
+    nonHcap = Counter(idList)
+    for fragID in set(idList):
+        with open('fragxyz/%s.xyz' % fragID, 'r') as f:
+            data = f.read()
+            lines = data.split('\n')
+            atomno = len(list(filter(None, lines)))
+            # print('atomno', atomno)
+        with open('fragxyz/%s.xyz' % fragID, 'w') as fw:
+            fw.write('%d\n' % atomno + '\n' + data)
         
+        ogatomno = nonHcap[fragID]
+        hcap = atomno - ogatomno
+        print(fragID, hcap, file=open('hcapno.dat', 'a'))
+
+
 def hyperconj_connections_para(graphDict, comb, donorDict, acceptorDict):
     donorLabel = comb[0]
     acceptorLabel = comb[1]

@@ -54,7 +54,7 @@ def EDM(A,B):
     p2 = np.sum(B**2, axis=1)
     p3 = -2 * np.dot(A,B.T)
     # return np.round(np.sqrt(p1+p2+p3),8)
-    return np.tril(np.sqrt(np.round(p1+p2+p3,8)))
+    return np.round(np.tril(np.sqrt(np.round(p1+p2+p3,8))),3)
 
 def EDMbox(A,B):
     # taken from https://medium.com/swlh/euclidean-distance-matrix-4c3e1378d87f
@@ -62,7 +62,7 @@ def EDMbox(A,B):
     p2 = np.sum(B**2, axis=1)
     p3 = -2 * np.dot(A,B.T)
     # return np.round(np.sqrt(p1+p2+p3),8)
-    return np.sqrt(np.round(p1+p2+p3,8))
+    return np.round(np.sqrt(np.round(p1+p2+p3,8)),3)
 
 def get_bond_order(atom1, atom2, dist, tol):
     bondDict = {('C', 'C'): {1: [1.37, 1.596], 1.5: [1.37, 1.432], 2: [1.243, 1.382], 3: [1.187, 1.268]}, ('C', 'Br'): {1: [1.789, 1.95]}, ('C', 'Cl'): {1: [1.612, 1.813]}, ('C', 'F'): {1: [1.262, 1.401]}, ('C', 'I'): {1: [1.992, 2.157]}, ('C', 'N'): {1: [1.347, 1.492], 1.5: [1.328, 1.35], 2: [1.207, 1.338], 3: [1.14, 1.177]}, ('C', 'O'): {1: [1.273, 1.448], 2: [1.135, 1.272], 3: [1.115, 1.145]}, ('C', 'P'): {1: [1.858, 1.858], 2: [1.673, 1.673], 3: [1.542, 1.562]}, ('C', 'S'): {1: [1.714, 1.849], 2: [1.553, 1.647], 3: [1.478, 1.535]}, ('C', 'Se'): {1: [1.855, 1.959], 2: [1.676, 1.709]}, ('C', 'Si'): {1: [1.722, 1.848]}, ('O', 'O'): {1: [1.116, 1.516], 2: [1.2, 1.208]}, ('N', 'O'): {1: [1.184, 1.507], 2: [1.066, 1.258]}, ('O', 'S'): {2: [1.405, 1.5]}, ('C', 'H'): {1: [0.931, 1.14]}, ('N', 'H'): {1: [0.836, 1.09]}, ('S', 'H'): {1: [1.322, 1.4]}, ('O', 'H'): {1: [0.912, 1.033]}, ('H', 'F'): {1: [0.917, 1.014]}, ('N', 'N'): {1: [1.181, 1.864], 1.5: [1.332, 1.332], 2: [1.139, 1.252], 3: [1.098, 1.133]}, ('S', 'S'): {1: [1.89, 2.155], 2: [1.825, 1.898]}, ('H', 'H') : {1: [0.741, 0.741]}, ('F', 'O'): {1: [1.421, 1.421]}, ('F', 'F'): {1: [1.322, 1.412]}, ('H', 'Cl'): {1: [1.275, 1.321]}, ('O', 'Cl'): {1: [1.641, 1.704], 2: [1.404, 1.414]}, ('Cl', 'Cl'): {1: [1.9879, 1.9879]}, ('N', 'F'): {1: [1.317, 1.512]}}
@@ -122,6 +122,26 @@ def get_radii(atom):
     
     return radii[atom]
 
+def get_covradii(atom):
+    # radii provided by Cordero
+    '''Cordero, Beatriz, et al. "Covalent radii revisited." Dalton Transactions 21 (2008): 2832-2838'''
+    # C4 = sp3, C3 = sp2, C2 = sp
+    radii = {"H": 0.31,
+    "B": 0.84,
+    "C4": 0.76, 
+    "C3": 0.73,
+    "C2": 0.69,
+    "N": 0.71,
+    "O": 0.66,
+    "F": 0.57,
+    "P": 1.07,
+    "S": 1.05,
+    "Cl": 1.02,
+    "Br": 1.20,
+    "I": 1.39
+    }
+    
+    return radii[atom]
 
 def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for volume representation 
     # uses formula provided by https://pubs.acs.org/doi/full/10.1021/ci800315d (ShaEP)

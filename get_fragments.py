@@ -155,7 +155,7 @@ dim = len(feasible_edges)
 pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo, dim)
 print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
 
-symbolList, coordList, weightList, idList = miscellaneous.get_fragments(G,  optimize.convert_bvector_edges(pos, feasible_edges), coordinates)
+symbolList, coordList, weightList, idList, hfragDict, fragNodes = miscellaneous.get_fragments(G,  optimize.convert_bvector_edges(pos, feasible_edges), coordinates)
 # print('symbolList', symbolList)
 # print('coordList', coordList)
 # print('weightList', weightList)
@@ -171,4 +171,4 @@ molDict = {'fragments': {'nfrag': len(Counter(idList)), 'fragid': idList, 'fragm
 # print(molDict, file=open('frag.json', 'a'))
 with open('frag.json', 'w') as fp:
     json.dump(molDict, fp, indent=4)
-miscellaneous.fragment_xyz(symbolList, coordList, idList)
+miscellaneous.fragment_xyz(symbolList, coordList, idList, G, coordinates, hfragDict, fragNodes)
