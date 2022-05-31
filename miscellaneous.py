@@ -165,7 +165,7 @@ def get_fragments(graph, optimal_edges_to_cut, coordinates):
     monids = range(1,count)
     monpairs = [x for x in combinations(monids, 2)]
     # print('monpairs', monpairs)
-    existing_pairs = []
+    existing_pairs = {}
     for edge in optimal_edges_to_cut:
         nodes = nx.node_connected_component(fgraph, edge[0]) | nx.node_connected_component(fgraph, edge[1])
         symbols = [graph.nodes[x]['element'] for x in nodes]
@@ -186,7 +186,7 @@ def get_fragments(graph, optimal_edges_to_cut, coordinates):
                     idList.extend(fragids)
 
                     print(count, pair[0], pair[1], file=open('dimercomp.dat', 'a'))
-                    existing_pairs.append(pair)
+                    existing_pairs[pair] = count # this is ok bc a pair of monomers will correspond to one dimer only
 
                     fragNodes[count] = [x for x in nodes]
 
@@ -199,12 +199,26 @@ def get_fragments(graph, optimal_edges_to_cut, coordinates):
                         else:
                             hfragDict[e].append(count)
                     count += 1
-
+                
+                # elif pair in existing_pairs:
+                #     fragid = existing_pairs[pair]
+                #     nodes_affected = set(flatten(optimal_edges_to_cut)).intersection(nodes) 
+                #     edges_cut = [e for e in optimal_edges_to_cut if any([e[0] in nodes_affected, e[1] in nodes_affected])]
+                #     edges_cut.remove(edge)
+                #     for e in edges_cut:
+                #         if e not in hfragDict:
+                #             hfragDict[e] = [fragid]
+                #         else:
+                #             hfragDict[e].append(fragid)
 
     return symbolList, coordList, weightList, idList, hfragDict, fragNodes
 
 def fragment_xyz(symbolList, coordList, idList, graph, coordinates, hfragDict, fragNodes):
     os.system('mkdir fragxyz')
+    # print('hfragDict')
+    # print('edge, fragid')
+    # for item in hfragDict:
+    #     print(item, hfragDict[item])
     # for k, v in Counter(idList).items():
     #     print('%s\n' % v, file=open('fragxyz/%s.xyz' % k, 'a'))
 
@@ -212,32 +226,33 @@ def fragment_xyz(symbolList, coordList, idList, graph, coordinates, hfragDict, f
         print(symbolList[i], '\t'.join(str(j) for j in coordList[3*i: 3*i + 3]), file=open('fragxyz/%s.xyz' % idList[i], 'a'))
     
     for edge, idlist in hfragDict.items():
+        # print('edge', edge)
         for id in idlist:
             # print('id', id)
-            # print('edge', edge)
             # print('fragNodes[id]', fragNodes[id])
             try:
                 nodeh = min(set(edge) - set(fragNodes[id]))  # this node will be replaced with hydrogen
+                othernode = min(set(edge).intersection(fragNodes[id]))
+
+                nodehel = graph.nodes[nodeh]['element']
+                othernodeel = graph.nodes[othernode]['element']
+
+                if nodehel == 'C':
+                    degree = graph.degree[nodeh]
+                    nodehel = 'C' + str(degree)
+                
+                if othernodeel == 'C':
+                    degree = graph.degree[othernode]
+                    othernodeel = 'C' + str(degree)
+
+                scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
+                hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
+                # print('hcoords', hcoords)
+                print('H', '\t'.join(str(hc) for hc in hcoords), file=open('fragxyz/%s.xyz' % id, 'a'))
+
             except ValueError:
-                break
-            othernode = min(set(edge).intersection(fragNodes[id]))
-
-            nodehel = graph.nodes[nodeh]['element']
-            othernodeel = graph.nodes[othernode]['element']
-
-            if nodehel == 'C':
-                degree = graph.degree[nodeh]
-                nodehel = 'C' + str(degree)
+                continue
             
-            if othernodeel == 'C':
-                degree = graph.degree[othernode]
-                othernodeel = 'C' + str(degree)
-
-            scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
-            hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
-            # print('hcoords', hcoords)
-            print('H', '\t'.join(str(hc) for hc in hcoords), file=open('fragxyz/%s.xyz' % id, 'a'))
-
     nonHcap = Counter(idList)
     for fragID in set(idList):
         with open('fragxyz/%s.xyz' % fragID, 'r') as f:
