@@ -199,19 +199,127 @@ def get_fragments(graph, optimal_edges_to_cut, coordinates):
                         else:
                             hfragDict[e].append(count)
                     count += 1
-                
-                # elif pair in existing_pairs:
-                #     fragid = existing_pairs[pair]
-                #     nodes_affected = set(flatten(optimal_edges_to_cut)).intersection(nodes) 
-                #     edges_cut = [e for e in optimal_edges_to_cut if any([e[0] in nodes_affected, e[1] in nodes_affected])]
-                #     edges_cut.remove(edge)
-                #     for e in edges_cut:
-                #         if e not in hfragDict:
-                #             hfragDict[e] = [fragid]
-                #         else:
-                #             hfragDict[e].append(fragid)
+
+                break
+            else:
+                continue
 
     return symbolList, coordList, weightList, idList, hfragDict, fragNodes
+
+def peff_hfrags(graph, coordinates, edges_to_cut_list):
+    fgraph = graph.copy()
+    fgraph.remove_edges_from(edges_to_cut_list)
+
+    monFrags, jdimerFrags = {}, {}
+    monHcaps, jdimerHcaps = {}, {}
+    connectedComp = (fgraph.subgraph(x) for x in nx.connected_components(fgraph))
+    ncount = len(list(graph.nodes))
+    for i, sg in enumerate(connectedComp):
+        sg1 = sg.copy()
+        # print('mon :', i+1)
+        cc = list(sg.nodes)
+        # fragNodes[i+1] = [x for x in cc]
+
+        nodes_affected = set(flatten(edges_to_cut_list)).intersection(cc) 
+        edges_cut = [e for e in edges_to_cut_list if any([e[0] in nodes_affected, e[1] in nodes_affected])] # gets the edges that were cut to make the fragment
+
+        for edge in edges_cut:
+            nodeh = min(set(edge) - set([x for x in cc])) # node replaced with hydrogen 
+            othernode = min(set(edge).intersection([x for x in cc]))
+
+            nodehel = graph.nodes[nodeh]['element']
+            othernodeel = graph.nodes[othernode]['element']
+
+            if nodehel == 'C':
+                    degree = graph.degree[nodeh]
+                    nodehel = 'C' + str(degree)
+                
+            if othernodeel == 'C':
+                degree = graph.degree[othernode]
+                othernodeel = 'C' + str(degree)
+
+            scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
+            hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
+
+            ncount += 1
+            # print(ncount, {"element": 'H', "coord": hcoords})
+            sg1.add_node(ncount, **{"element": 'H', "charge": 0, "coord": hcoords, "at": 'H_'})
+            sg1.add_edge(ncount, othernode, **{'bo': 1})
+        
+        monFrags['%d' % (i+1)] = sg1
+        monHcaps['%d' % (i+1)] = len(list(sg1.nodes)) - len(cc)
+
+    # for monomer in monFrags:
+    #     print('monomer', monomer)
+    #     print(set(monFrags[monomer].nodes))
+
+    count = len([x for x in nx.connected_components(fgraph)]) + 1
+    monids = range(1,count)
+    monpairs = [x for x in combinations(monids, 2)]
+    existing_pairs = []
+    for e in edges_to_cut_list:
+
+        nodes = nx.node_connected_component(fgraph, e[0]) | nx.node_connected_component(fgraph, e[1])
+        hcaps = 0
+        for pair in monpairs:
+            mon1nodes, mon2nodes = [x for x in monFrags[str(pair[0])].nodes if x <= len(list(graph.nodes))], [x for x in monFrags[str(pair[1])].nodes if x <= len(list(graph.nodes))]
+            # print('mon nodes', set(mon1nodes) | set(mon2nodes))
+            # print('dimer nodes', set(nodes))
+            if (set(mon1nodes) | set(mon2nodes)).issubset(set(nodes)):
+
+                if pair not in existing_pairs:
+                    mon1, mon2 = pair[0], pair[1]
+                    # print('jdimer :', mon1, mon2)
+                    mon1graph, mon2graph = monFrags[str(pair[0])].copy(), monFrags[str(pair[1])].copy()
+                    mon1graph.remove_nodes_from(list(set(mon1graph.nodes) - set(mon1nodes)))
+                    mon2graph.remove_nodes_from(list(set(mon2graph.nodes) - set(mon2nodes)))
+                    jdimer = nx.compose(mon1graph, mon2graph)
+                    jdimer.add_edge(e[0], e[1], **{'bo': graph[e[0]][e[1]]['bo']})
+                    existing_pairs.append(pair)
+
+                    nodes_affected = set(flatten(edges_to_cut_list)).intersection(nodes) 
+                    edges_cut = [e for e in edges_to_cut_list if any([e[0] in nodes_affected, e[1] in nodes_affected])]
+                    edges_cut.remove(e)
+                    for edg in edges_cut:
+                        try:
+                            nodeh = min(set(edg) - set(nodes))  # this node will be replaced with hydrogen
+                            othernode = min(set(edg).intersection(nodes))
+
+                            nodehel = graph.nodes[nodeh]['element']
+                            othernodeel = graph.nodes[othernode]['element']
+
+                            if nodehel == 'C':
+                                degree = graph.degree[nodeh]
+                                nodehel = 'C' + str(degree)
+                            
+                            if othernodeel == 'C':
+                                degree = graph.degree[othernode]
+                                othernodeel = 'C' + str(degree)
+
+                            scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
+                            hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
+                            # print('hcoords', hcoords)
+                            hcaps += 1
+                            ncount += 1
+
+                            jdimer.add_node(ncount,  **{"element": 'H', "charge": 0, "coord": hcoords, "at": 'H_'})
+                            # print(ncount,  {"element": 'H', "coord": hcoords})
+                            jdimer.add_edge(ncount, othernode, **{'bo': 1})
+
+                        except ValueError:
+                            continue
+                break
+            else:
+                continue
+        
+        pairs = sorted([mon1, mon2])
+        jdimerFrags['%d_%d' % (pairs[0], pairs[1])] = jdimer
+        jdimerHcaps['%d_%d' % (pairs[0], pairs[1])] = len(jdimer.nodes) - len(nodes)
+
+    # print('monHcaps', monHcaps)
+    # print('jdimerHcaps', jdimerHcaps)
+    return monFrags, monHcaps, jdimerFrags, jdimerHcaps
+    
 
 def fragment_xyz(symbolList, coordList, idList, graph, coordinates, hfragDict, fragNodes):
     os.system('mkdir fragxyz')

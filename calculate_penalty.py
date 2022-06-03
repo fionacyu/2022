@@ -196,6 +196,21 @@ def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
     penaltyList = [(load_data.get_volume(sg, proxMatrix)/refVol - 1)**2 for sg in connectedComp]
     return round(sum(penaltyList)/len(penaltyList),4)
 
+def peff_penalty(graph, coordinates, edges_to_cut_list):
+    # read in prm file
+    prmDict = load_data.read_prm()
+    # first need potential energy of entire system 
+    
+
+    monFrags, monHcaps, jdimerFrags, jdimerHcaps = miscellaneous.peff_hfrags(graph, coordinates, edges_to_cut_list)
+    # ^^ these are all dictionaries
+    # monFrags and jdimerFrags already have hydrogen caps appended to them 
+
+    # get mbe2 energy for each individual energy type: bond, angle, torsional, inversion, vdw
+    # then sum altogether?
+
+
+
 
 def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
     penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]

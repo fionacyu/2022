@@ -1,3 +1,4 @@
+import uff
 import sys
 import re
 import numpy as np
@@ -40,10 +41,10 @@ def read_xyz(xyzFile, chargefile=False):
                 coordinates.append([float(x),float(y),float(z)])
                 atoms.append(atom)
                 if chargefile:
-                    nodeList.append((len(atoms), {"element": atom, "charge": chargeList[count]}))
+                    nodeList.append((len(atoms), {"element": atom, "charge": chargeList[count], "coord": [float(x),float(y),float(z)]}))
                     
                 else:
-                    nodeList.append((len(atoms), {"element": atom, "charge": 0}))
+                    nodeList.append((len(atoms), {"element": atom, "charge": 0, "coord": [float(x),float(y),float(z)]}))
                 count += 1
     # print(nodeList)
     return atoms, coordinates, nodeList
@@ -182,3 +183,28 @@ def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for vo
     volume = pairVol + sameVol
 
     return volume
+
+def read_prm():
+    prmFile = 'UFF.prm'
+    prmPattern = '-?[0-9]*\s*-?[0-9]*\.[0-9]*\s*-?[0-9]*\.[0-9]*\s*'
+    prmDict = {}
+
+    with open(prmFile, 'r+') as f:
+        data = f.readlines()
+    for line in data:
+        if re.search(prmPattern, line):
+            prm = uff.parameter()
+            _, at, r1, theta0, x1, D1, _, Z1, Vi, Uj, Xi, _, _ = line.split()
+            prm.add_r1(r1) # equil bond length
+            prm.add_theta0(theta0) # equil bond angle
+            prm.add_x1(x1) # vdw dist
+            prm.add_D1(D1) # vdw well depth 
+            prm.add_Z1(Z1) # effective charge
+            prm.add_Vi(Vi) # torsion param
+            prm.add_Uj(Uj) # torsion param
+            prm.add_Xi(Xi) # electronegativity
+
+            prmDict[at] = prm
+    
+    return prmDict
+

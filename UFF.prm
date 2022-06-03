@@ -1,5 +1,5 @@
 #
-# Open Babel file: UFF.prm
+# Taken from open Babel file: UFF.prm
 #
 # Force field parameters for UFF, the Universal Force Field
 # Used by OBForceField and OBUFFForceField

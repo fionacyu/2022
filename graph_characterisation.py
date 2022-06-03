@@ -20,6 +20,7 @@ def hybridisation2(graph, proxMatrix, tol=0.003):
 
     for hatom in hlist:
         graph.nodes[hatom]['ed'] = 1 # electron domain of hydrogen is defaulted to 1
+        graph.nodes[hatom]['at'] = 'H_'
     # print(ha)
 
     edgeAttr = {} #this will be used to construct the molecular graph of the molecule, attributes will be distance and bond type (single, double etc.)
@@ -44,7 +45,7 @@ def hybridisation2(graph, proxMatrix, tol=0.003):
 
             if bo != 0:
                 if len(set([(nodeNumber, j+1), (j+1, nodeNumber)]).intersection(edgeAttr)) == 0:
-                    edgeAttr[(nodeNumber, j+1)] = {'bo': bo}
+                    edgeAttr[(nodeNumber, j+1)] = {'bo': bo, 'r': bondVector[j]}
                 bondElec = bondElec + 2 * bo
                 bondED = bondED + 1
         valElec = load_data.get_valence(graph.nodes[nodeNumber]['element'])
@@ -53,6 +54,35 @@ def hybridisation2(graph, proxMatrix, tol=0.003):
         # print('elecDom', elecDom)
 
         graph.nodes[nodeNumber]['ed'] = elecDom
+
+        # setting the UFF atom types
+        if graph.nodes[nodeNumber]['element'] in ['F', 'Cl', 'Br', 'I']:
+            _status = False
+            if len(graph.nodes[nodeNumber]['element']) == 1:
+                _status = True
+            
+            if _status:
+                at = graph.nodes[nodeNumber]['element'] + '_' 
+            else:
+                at = graph.nodes[nodeNumber]['element']
+            
+            graph.nodes[nodeNumber]['at'] = at
+        elif graph.nodes[nodeNumber]['element'] in ['O', 'C', 'N']:
+            at = graph.nodes[nodeNumber]['element'] + '_' + str(elecDom - 1)
+            # need to fix if aromatic, do this later with aromaticity
+            graph.nodes[nodeNumber]['at'] = at
+        elif graph.nodes[nodeNumber]['element'] == 'S':
+            neighDict = Counter([graph.nodes[x]['element'] for x in graph.neighbors(nodeNumber)])
+            if neighDict['O'] == 2:
+                at = 'S_3+4'
+            elif neighDict['O'] == 3:
+                at = 'S_3+6'
+            else:
+                at = 'S_3+2'
+            graph.nodes[nodeNumber]['at'] = at
+        elif graph.nodes[nodeNumber]['element'] == 'P':
+            graph.nodes[nodeNumber]['at'] = 'P_3+3'
+            
     graph.add_edges_from([k for k, _ in edgeAttr.items()])
     nx.set_edge_attributes(graph, edgeAttr)
 
