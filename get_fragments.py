@@ -184,3 +184,6 @@ print('angle energy', aenergy)
 
 torenergy = uff.torsional_energy(G, prmDict)
 print('torsion energy', torenergy)
+
+vdwenergy = uff.vdw_energy(G, prmDict)
+print('vdw energy', vdwenergy)

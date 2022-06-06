@@ -247,8 +247,50 @@ def torsional_energy(graph, prmDict):
             # print(graph.nodes[nodea]['at'], graph.nodes[nodeb]['at'], graph.nodes[nodec]['at'], graph.nodes[noded]['at'], round(V,3), round(tor * 180/math.pi,3), round(inc, 3))
     # print(count)
     return energy
-            
+
+def vdw_energy(graph, prmDict):
+    energy = 0.0
+    gdict = {n: set(graph.neighbors(n)) for n in graph.nodes}
+    # print(gdict)
+    pairList = combinations(list(graph.nodes), 2)
+    
+    count = 0
+    for pair in pairList:
         
+        node1, node2 = pair[0], pair[1]
+        dist = miscellaneous.shortest_path_length(gdict, node1, node2)[1]
+        if dist >= 3:
+            print(pair, file=open('pair.txt', 'a'))
+            print(dist, file=open('pair.txt', 'a'))
+            count += 1
+            
+            Ra = prmDict[graph.nodes[node1]['at']].x1
+            ka = prmDict[graph.nodes[node1]['at']].D1
+            Rb = prmDict[graph.nodes[node2]['at']].x1
+            kb = prmDict[graph.nodes[node2]['at']].D1
+
+            kab = KCAL_TO_KJ * math.sqrt(ka * kb)
+            kaSquared = (Ra * Rb)
+            # ka now represents the xij in equation 20 -- the expected vdw distance
+            ka = math.sqrt(kaSquared)
+
+            va, vb = np.array(graph.nodes[node1]['coord']), np.array(graph.nodes[node2]['coord'])
+            rabSquared = linalg.norm(va-vb)**2
+
+            if rabSquared < 0.00001:
+                rabSquared = 0.00001
+            
+            term6 = kaSquared / rabSquared
+            term6 = term6 * term6 * term6
+            term12 = term6 * term6
+            inc = kab * ((term12) - (2.0 * term6))
+            energy += inc
+
+            print(graph.nodes[node1]['at'], graph.nodes[node2]['at'], round(math.sqrt(rabSquared),3), round(kab,3), round(inc,3))
+
+    print('vdw count', count)
+    return energy
+
 
 
 
