@@ -89,13 +89,16 @@ def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict): # return
                     if all(x < 0.5 for x in deviationList):
                         # print('hello')
                         small_aromatic_cycles.append([x for x in conjugated_edges[prod[1]] if x[0] in cycles and x[1] in cycles])
+                        for e in [x for x in conjugated_edges[prod[1]] if x[0] in cycles and x[1] in cycles]:
+                            graph[e[0]][e[1]]['bo'] = 1.5 # ensuring bond order is 1.5 
+                            graph.nodes[e[0]]['at'], graph.nodes[e[1]]['at'] = graph.nodes[e[0]]['element'] + '_R', graph.nodes[e[1]]['element'] + '_R' # adjusting the atom type for UFF
                         # aromatic_edges.append([x for x in cycles])
         
         # print('small_aromatic_cycles', small_aromatic_cycles)
-        return small_aromatic_cycles
+        return small_aromatic_cycles, graph
 
 def classify_aromatic_systems(graph, conjugated_edges, coordinates, cycleDict):
-    small_aromatic_cycles = check_aromaticity(graph, conjugated_edges, coordinates, cycleDict)
+    small_aromatic_cycles, graph = check_aromaticity(graph, conjugated_edges, coordinates, cycleDict)
     print('small_aromatic_cycles', small_aromatic_cycles)
     edgeList = miscellaneous.flatten(small_aromatic_cycles)
     nodeList = [x for x in set(chain(*miscellaneous.flatten(small_aromatic_cycles)))]
@@ -124,5 +127,5 @@ def classify_aromatic_systems(graph, conjugated_edges, coordinates, cycleDict):
         aromaticsys.add_bridging_edges(bedgeList)
         aromaticDict['aroma%d' % count] = aromaticsys
     
-    return aromaticDict 
+    return aromaticDict, graph
 

@@ -7,6 +7,7 @@ import aromaticity
 import rings
 import boxing
 import optimize
+import uff
 import argparse
 import networkx as nx
 import numpy as np
@@ -67,7 +68,7 @@ cycleDict = boxing.classify_cycles(G, cycleDict)
 # print('cycleDict', cycleDict)
 
 t5 = time.process_time()
-aromaticDict = aromaticity.classify_aromatic_systems(G, conjugated_edges, coordinates, cycleDict)
+aromaticDict, G = aromaticity.classify_aromatic_systems(G, conjugated_edges, coordinates, cycleDict)
 # print('aromaticity classification time: ', time.process_time() - t5)
 
 t6 = time.process_time()
@@ -149,26 +150,37 @@ betalist = [0,0,0,0,0,1]
 # print('total_penalty', total_penalty)
 # print('total penalty time', time.process_time() - t8)
 
-feasible_edges = optimize.get_feasible_edges(G)
-print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', "a"))
-dim = len(feasible_edges)
-pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo, dim)
-print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
+# feasible_edges = optimize.get_feasible_edges(G)
+# print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', "a"))
+# dim = len(feasible_edges)
+# pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo, dim)
+# # pos = np.array([1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0])
+# print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
 
-symbolList, coordList, weightList, idList, hfragDict, fragNodes = miscellaneous.get_fragments(G,  optimize.convert_bvector_edges(pos, feasible_edges), coordinates)
-# print('symbolList', symbolList)
-# print('coordList', coordList)
-# print('weightList', weightList)
-# print('idList', idList)
-smallestfrags = []
-for count, weight in enumerate(weightList):
-    if weight == -1:
-        smallestfrags.append(idList[count])
-smallestfrags =  set(smallestfrags)
-print(','.join(str(x) for x in smallestfrags), file=open('smallestfrag.dat', 'a'))
+# symbolList, coordList, weightList, idList, hfragDict, fragNodes = miscellaneous.get_fragments(G,  optimize.convert_bvector_edges(pos, feasible_edges), coordinates)
+# # print('symbolList', symbolList)
+# # print('coordList', coordList)
+# # print('weightList', weightList)
+# # print('idList', idList)
+# smallestfrags = []
+# for count, weight in enumerate(weightList):
+#     if weight == -1:
+#         smallestfrags.append(idList[count])
+# smallestfrags =  set(smallestfrags)
+# print(','.join(str(x) for x in smallestfrags), file=open('smallestfrag.dat', 'a'))
 
-molDict = {'fragments': {'nfrag': len(Counter(idList)), 'fragid': idList, 'fragment_charges': [0 for _ in range(len(Counter(idList)))], 'weights': weightList, 'broken_bonds': [] }, 'symbols': symbolList, 'geometry': coordList}
-# print(molDict, file=open('frag.json', 'a'))
-with open('frag.json', 'w') as fp:
-    json.dump(molDict, fp, indent=4)
-miscellaneous.fragment_xyz(symbolList, coordList, idList, G, coordinates, hfragDict, fragNodes)
+# molDict = {'fragments': {'nfrag': len(Counter(idList)), 'fragid': idList, 'fragment_charges': [0 for _ in range(len(Counter(idList)))], 'weights': weightList, 'broken_bonds': [] }, 'symbols': symbolList, 'geometry': coordList}
+# # print(molDict, file=open('frag.json', 'a'))
+# with open('frag.json', 'w') as fp:
+#     json.dump(molDict, fp, indent=4)
+# miscellaneous.fragment_xyz(symbolList, coordList, idList, G, coordinates, hfragDict, fragNodes)
+
+prmDict = load_data.read_prm()
+benergy = uff.bond_energy(G, prmDict)
+print('bond energy', benergy)
+
+aenergy = uff.angle_energy(G, prmDict)
+print('angle energy', aenergy)
+
+torenergy = uff.torsional_energy(G, prmDict)
+print('torsion energy', torenergy)

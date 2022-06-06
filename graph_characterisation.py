@@ -72,13 +72,16 @@ def hybridisation2(graph, proxMatrix, tol=0.003):
             # need to fix if aromatic, do this later with aromaticity
             graph.nodes[nodeNumber]['at'] = at
         elif graph.nodes[nodeNumber]['element'] == 'S':
-            neighDict = Counter([graph.nodes[x]['element'] for x in graph.neighbors(nodeNumber)])
-            if neighDict['O'] == 2:
-                at = 'S_3+4'
-            elif neighDict['O'] == 3:
-                at = 'S_3+6'
+            if elecDom == 4:
+                neighDict = Counter([graph.nodes[x]['element'] for x in graph.neighbors(nodeNumber)])
+                if neighDict['O'] == 2:
+                    at = 'S_3+4'
+                elif neighDict['O'] == 3:
+                    at = 'S_3+6'
+                else:
+                    at = 'S_3+2'
             else:
-                at = 'S_3+2'
+                at = 'S_' + str(elecDom - 1)
             graph.nodes[nodeNumber]['at'] = at
         elif graph.nodes[nodeNumber]['element'] == 'P':
             graph.nodes[nodeNumber]['at'] = 'P_3+3'

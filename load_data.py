@@ -185,7 +185,7 @@ def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for vo
     return volume
 
 def read_prm():
-    prmFile = 'UFF.prm'
+    prmFile = '/Users/u7430616/scripts/fragProgPy/UFF.prm'
     prmPattern = '-?[0-9]*\s*-?[0-9]*\.[0-9]*\s*-?[0-9]*\.[0-9]*\s*'
     prmDict = {}
 
@@ -195,14 +195,14 @@ def read_prm():
         if re.search(prmPattern, line):
             prm = uff.parameter()
             _, at, r1, theta0, x1, D1, _, Z1, Vi, Uj, Xi, _, _ = line.split()
-            prm.add_r1(r1) # equil bond length
-            prm.add_theta0(theta0) # equil bond angle
-            prm.add_x1(x1) # vdw dist
-            prm.add_D1(D1) # vdw well depth 
-            prm.add_Z1(Z1) # effective charge
-            prm.add_Vi(Vi) # torsion param
-            prm.add_Uj(Uj) # torsion param
-            prm.add_Xi(Xi) # electronegativity
+            prm.add_r1(float(r1)) # equil bond length
+            prm.add_theta0(float(theta0)) # equil bond angle
+            prm.add_x1(float(x1)) # vdw dist
+            prm.add_D1(float(D1)) # vdw well depth 
+            prm.add_Z1(float(Z1)) # effective charge
+            prm.add_Vi(float(Vi)) # torsion param
+            prm.add_Uj(float(Uj)) # torsion param
+            prm.add_Xi(float(Xi)) # electronegativity
 
             prmDict[at] = prm
     
