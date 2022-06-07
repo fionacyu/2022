@@ -1,3 +1,4 @@
+from ctypes.wintypes import HACCEL
 import rings
 import hyperconj
 import sys
@@ -11,6 +12,7 @@ import os
 from itertools import product
 from itertools import combinations
 import math
+from numpy import linalg
 import time
 
 def flatten(t):
@@ -206,7 +208,7 @@ def get_fragments(graph, optimal_edges_to_cut, coordinates):
 
     return symbolList, coordList, weightList, idList, hfragDict, fragNodes
 
-def peff_hfrags(graph, coordinates, edges_to_cut_list):
+def peff_hfrags(graph, edges_to_cut_list):
     fgraph = graph.copy()
     fgraph.remove_edges_from(edges_to_cut_list)
 
@@ -239,12 +241,13 @@ def peff_hfrags(graph, coordinates, edges_to_cut_list):
                 othernodeel = 'C' + str(degree)
 
             scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
-            hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
+            # hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
+            hcoords = list(np.array(graph.nodes[othernode]['coord']) + scalar * (np.array(graph.nodes[nodeh]['coord']) - np.array(graph.nodes[othernode]['coord'])))
 
             ncount += 1
             # print(ncount, {"element": 'H', "coord": hcoords})
-            sg1.add_node(ncount, **{"element": 'H', "charge": 0, "coord": hcoords, "at": 'H_'})
-            sg1.add_edge(ncount, othernode, **{'bo': 1})
+            sg1.add_node(ncount, **{"element": 'H', "charge": 0, "coord": hcoords,"ed":1,  "at": 'H_'})
+            sg1.add_edge(ncount, othernode, **{'bo': 1, 'r': linalg.norm(np.array(hcoords) - np.array(graph.nodes[othernode]['coord']))})
         
         monFrags['%d' % (i+1)] = sg1
         monHcaps['%d' % (i+1)] = len(list(sg1.nodes)) - len(cc)
@@ -274,7 +277,7 @@ def peff_hfrags(graph, coordinates, edges_to_cut_list):
                     mon1graph.remove_nodes_from(list(set(mon1graph.nodes) - set(mon1nodes)))
                     mon2graph.remove_nodes_from(list(set(mon2graph.nodes) - set(mon2nodes)))
                     jdimer = nx.compose(mon1graph, mon2graph)
-                    jdimer.add_edge(e[0], e[1], **{'bo': graph[e[0]][e[1]]['bo']})
+                    jdimer.add_edge(e[0], e[1], **{'bo': graph[e[0]][e[1]]['bo'], 'r': linalg.norm(np.array(graph.nodes[e[0]]['coord']) - np.array(graph.nodes[e[1]]['coord']))})
                     existing_pairs.append(pair)
 
                     nodes_affected = set(flatten(edges_to_cut_list)).intersection(nodes) 
@@ -297,14 +300,15 @@ def peff_hfrags(graph, coordinates, edges_to_cut_list):
                                 othernodeel = 'C' + str(degree)
 
                             scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
-                            hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
+                            # hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
+                            hcoords = list(np.array(graph.nodes[othernode]['coord']) + scalar * (np.array(graph.nodes[nodeh]['coord']) - np.array(graph.nodes[othernode]['coord'])))
                             # print('hcoords', hcoords)
                             hcaps += 1
                             ncount += 1
 
-                            jdimer.add_node(ncount,  **{"element": 'H', "charge": 0, "coord": hcoords, "at": 'H_'})
+                            jdimer.add_node(ncount,  **{"element": 'H', "charge": 0, "coord": hcoords, "ed":1, "at": 'H_'})
                             # print(ncount,  {"element": 'H', "coord": hcoords})
-                            jdimer.add_edge(ncount, othernode, **{'bo': 1})
+                            jdimer.add_edge(ncount, othernode, **{'bo': 1, 'r': linalg.norm(np.array(hcoords) - np.array(graph.nodes[othernode]['coord']))})
 
                         except ValueError:
                             continue
@@ -320,6 +324,28 @@ def peff_hfrags(graph, coordinates, edges_to_cut_list):
     # print('jdimerHcaps', jdimerHcaps)
     return monFrags, monHcaps, jdimerFrags, jdimerHcaps
     
+def disjoint_dimers(monFrags, jdimerFrags):
+    monKeys = list(monFrags)
+    monPairs = combinations(monKeys, 2)
+
+    ddimerFrags = {}
+    for pair in monPairs:
+        if "%s_%s" % (pair[0], pair[1]) in jdimerFrags or "%s_%s" % (pair[1], pair[0]) in jdimerFrags:
+            continue
+        else:
+            ddgraph = nx.compose(monFrags[pair[0]], monFrags[pair[1]])
+            ddimerFrags["%s_%s" % (pair[0], pair[1])] = ddgraph
+    
+    # os.system('mkdir ddfrags')
+    # for dd in ddimerFrags:
+    #     atomno = len(ddimerFrags[dd].nodes)
+    #     print('%d\n' % atomno, file=open('ddfrags/%s.xyz' % dd, 'a'))
+
+    #     for node in list(ddimerFrags[dd].nodes):
+    #         print('%s' % ddimerFrags[dd].nodes[node]['element'], '\t'.join(str(hc) for hc in ddimerFrags[dd].nodes[node]['coord']), file=open('ddfrags/%s.xyz' % dd, 'a'))
+
+    return ddimerFrags
+
 
 def fragment_xyz(symbolList, coordList, idList, graph, coordinates, hfragDict, fragNodes):
     os.system('mkdir fragxyz')

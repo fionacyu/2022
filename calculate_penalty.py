@@ -1,5 +1,6 @@
 import optimize
 import load_data
+import uff
 from cmath import cos, exp
 import miscellaneous
 import networkx as nx
@@ -196,19 +197,23 @@ def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
     penaltyList = [(load_data.get_volume(sg, proxMatrix)/refVol - 1)**2 for sg in connectedComp]
     return round(sum(penaltyList)/len(penaltyList),4)
 
-def peff_penalty(graph, coordinates, edges_to_cut_list):
-    # read in prm file
-    prmDict = load_data.read_prm()
-    # first need potential energy of entire system 
+def peff_penalty(graph, edges_to_cut_list):
     
-
-    monFrags, monHcaps, jdimerFrags, jdimerHcaps = miscellaneous.peff_hfrags(graph, coordinates, edges_to_cut_list)
+    # getting the monomer, dimer (joined and disjoint) and graphs 
+    monFrags, monHcaps, jdimerFrags, jdimerHcaps = miscellaneous.peff_hfrags(graph, edges_to_cut_list) # monomer and joined dimers and their respective number of hydrogen caps 
+    ddimerFrags = miscellaneous.disjoint_dimers(monFrags, jdimerFrags) # disjoint dimers
     # ^^ these are all dictionaries
     # monFrags and jdimerFrags already have hydrogen caps appended to them 
 
     # get mbe2 energy for each individual energy type: bond, angle, torsional, inversion, vdw
     # then sum altogether?
+    mbe2 = uff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps)
+    # print('mbe2', mbe2)
+    E = uff.total_energy(graph)
 
+    diff = 1000 * abs(E-mbe2)/2625.5 # energy in mH
+    # print('deviation', diff)
+    
 
 
 

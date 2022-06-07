@@ -9,6 +9,7 @@ import load_data
 # parameters
 KCAL_TO_KJ = 4.184
 DEG_TO_RADIAN = math.pi/180
+RAD_TO_DEG = 180 / math.pi
 
 class parameter:
     def add_r1(self, r1):
@@ -63,6 +64,29 @@ def bond_distance(prmDict, graph, node1, node2):
     return r0
 # want to have a function to calculate each type of energy with a graph as an input 
 
+def vectorAngle (v1, v2 ):
+    dp = np.dot(v1,v2)/ (linalg.norm(v1) * linalg.norm(v2))
+
+    if (dp < -0.999999):
+        dp = -0.9999999
+
+    if (dp > 0.9999999):
+        dp = 0.9999999
+
+
+    return((RAD_TO_DEG * np.arccos(dp)))
+
+def Point2PlaneAngle(a, b, c, d):
+    # a, b, c, d are np arrays with size 3
+    ac = a - c
+    bc = b - c
+    cd = c - d
+
+    normal = np.cross(bc, cd)
+    angle = 90.0 - vectorAngle(normal, ac)
+    return angle
+
+
 def bond_energy(graph, prmDict):
     energy = 0
 
@@ -109,10 +133,6 @@ def angle_energy(graph, prmDict):
             rbc = math.sqrt(rab*rab + rac*rac - 2.0 * rab*rac*cosT0)
             ab = b - a
             ac = c - a
-            # rbc = linalg.norm(b - c)
-            # print('first rbc', rbc)
-            # rbc = math.sqrt(linalg.norm(ab)*linalg.norm(ab) + linalg.norm(ac)*linalg.norm(ac) - 2.0 * linalg.norm(ab)*linalg.norm(ac)*cosT0)
-            # print('second rbc', rbc)
             cosT = np.dot(ab, ac) / (linalg.norm(ab) * linalg.norm(ac))
             theta = np.arccos(cosT) # angle in radians
 
@@ -191,24 +211,13 @@ def torsional_energy(graph, prmDict):
             phi0 = 0.0
             n = 6
             
-            # exception when an atom is group 16 
+            # exception when an sp3 atom is group 16 
+            blist = [graph.nodes[nodeb]['ed'] == 4, graph.nodes[nodec]['ed'] == 4]
+            sp3node = [e for i,e in enumerate(edge) if blist[i]][0] # obtain atom that is the sp3 center
 
-            if load_data.get_valence(graph.nodes[nodeb]['element']) == 6:
+            if load_data.get_valence(graph.nodes[sp3node]['element']) == 6:
 
-                # atom b:
-                if graph.nodes[nodeb]['element'] == 'O':
-                    n = 2
-                    phi0 = 90
-                elif graph.nodes[nodeb]['element'] == 'S':
-                    n = 2
-                    phi0 = 90
-
-            if load_data.get_valence(graph.nodes[nodec]['element']) == 6:
-                # atom c
-                if graph.nodes[nodec]['element'] == 'O':
-                    n = 2
-                    phi0 = 90
-                elif graph.nodes[nodec]['element'] == 'S':
+                if graph.nodes[sp3node]['element'] == 'O' or graph.nodes[sp3node]['element'] == 'S':
                     n = 2
                     phi0 = 90
 
@@ -225,8 +234,7 @@ def torsional_energy(graph, prmDict):
             bccd = np.cross(vcb, vdc)
 
             dotAbbcBccd = np.dot(abbc,bccd)
-            # print('dotAbbcBccd', dotAbbcBccd)
-            # print('linalg.norm(abbc) * linalg.norm(bccd)', linalg.norm(abbc) * linalg.norm(bccd))
+
             costor = (dotAbbcBccd / (linalg.norm(abbc) * linalg.norm(bccd)))
             # print('costor', costor)
             if math.isnan(costor):
@@ -254,15 +262,15 @@ def vdw_energy(graph, prmDict):
     # print(gdict)
     pairList = combinations(list(graph.nodes), 2)
     
-    count = 0
+    # count = 0
     for pair in pairList:
         
         node1, node2 = pair[0], pair[1]
         dist = miscellaneous.shortest_path_length(gdict, node1, node2)[1]
-        if dist >= 3:
-            print(pair, file=open('pair.txt', 'a'))
-            print(dist, file=open('pair.txt', 'a'))
-            count += 1
+        if dist >= 3 or dist == 0:
+            # print(pair, file=open('pair.txt', 'a'))
+            # print(dist, file=open('pair.txt', 'a'))
+            # count += 1
             
             Ra = prmDict[graph.nodes[node1]['at']].x1
             ka = prmDict[graph.nodes[node1]['at']].D1
@@ -286,13 +294,103 @@ def vdw_energy(graph, prmDict):
             inc = kab * ((term12) - (2.0 * term6))
             energy += inc
 
-            print(graph.nodes[node1]['at'], graph.nodes[node2]['at'], round(math.sqrt(rabSquared),3), round(kab,3), round(inc,3))
+            # print(graph.nodes[node1]['at'], graph.nodes[node2]['at'], round(math.sqrt(rabSquared),3), round(kab,3), round(inc,3))
 
-    print('vdw count', count)
+    # print('vdw count', count)
     return energy
 
+# oop bending not used 
+# def oop_energy(graph): # out of plane bending energy
+#     energy = 0.0
 
+#     validAtoms = {'C', 'O', 'N', 'P'}
+#     nodeList = [x for x in list(graph.nodes) if graph.degree[x] == 3 and graph.nodes[x]['element'] in validAtoms] # only concerns atoms that are bonded to exactly three other atoms
 
+#     # node I is connected to atoms J K and L
+#     for node in nodeList:
+#         neighList = list(graph.neighbors(node))
+
+#         at = graph.nodes[node]['at']
+
+#         at1 = {'N_3', 'N_2', 'N_R', 'O_2', 'O_R'}
+#         if at in at1:
+#             c0 = 1.0
+#             c1 = -1.0
+#             c2 = 0.0
+#             koop = 6.0 * KCAL_TO_KJ
+#         if at == 'C_2' or at == 'C_R':
+#             c0 = 1.0
+#             c1 = -1.0
+#             c2 = 0.0
+#             koop = 6.0 * KCAL_TO_KJ
+
+#             neighat = [graph.nodes[x]['at'] for x in neighList]
+#             if 'O_2' in neighat:
+#                 koop = 50.0 * KCAL_TO_KJ
+        
+#         koop /= 3.0 # three inversion centers
+
+#         b = np.array(graph.nodes[node]['coord'])
+#         a, c, d =  np.array(graph.nodes[neighList[0]]['coord']), np.array(graph.nodes[neighList[1]]['coord']), np.array(graph.nodes[neighList[2]]['coord'])
+#         angle = DEG_TO_RADIAN * Point2PlaneAngle(d, a, b, c)
+
+#         inc = koop * (c0 + c1 * np.cos(angle) + c2 * np.cos(2.0*angle))
+#         energy += inc
+        
+#         print(graph.nodes[neighList[2]]['at'], graph.nodes[node]['at'], graph.nodes[neighList[0]]['at'], graph.nodes[neighList[1]]['at'], round(angle * RAD_TO_DEG, 3), round(koop, 3), round(inc, 3))
+#     return energy
+
+def total_energy(graph):
+    prmDict = load_data.read_prm()
+    energy = 0.0
+    energy += bond_energy(graph, prmDict)
+    energy += angle_energy(graph, prmDict)
+    energy += torsional_energy(graph, prmDict)
+    energy += vdw_energy(graph, prmDict)
+
+    return energy
+
+def dimer_comp(dname):
+    return dname.split('_')[0], dname.split('_')[1]
+
+def mbe2(monFrag, jdFrag, ddFrag, monHcaps, jdimerHcaps):
+    monEnergies = {}
+    jdEnergies, ddEnergies = {}, {}
+
+    for mon in monFrag:
+        monEnergies[mon] = total_energy(monFrag[mon])
+        print(mon, total_energy(monFrag[mon]))
+    
+    for jd in jdFrag:
+        jdEnergies[jd] = total_energy(jdFrag[jd])
+        print(jd, total_energy(jdFrag[jd]))
+
+    for dd in ddFrag:
+        ddEnergies[dd] = total_energy(ddFrag[dd])
+        print(dd, total_energy(ddFrag[dd]))
+    
+    sumMonEnergiesH = sum(monEnergies[x] for x in monEnergies)
+    sumMonEnergies = sumMonEnergiesH - 0.5 *2625.5 * sum([v for _, v in monHcaps.items()])
+
+    dimerEnergies = {}
+    dimerEnergies.update(jdEnergies)
+    dimerEnergies.update(ddEnergies)
+    intEnergy = 0
+    for dimer in dimerEnergies:
+        mon1, mon2 = dimer_comp(dimer)
+        if dimer in jdEnergies:
+            # minus energy of hydrogen = 0.5 hartrees 
+            inc = (dimerEnergies[dimer] - 2625.5 * 0.5 * int(jdimerHcaps[dimer])) - (monEnergies[mon1] - 2625.5 * 0.5 * int(monHcaps[mon1])) - (monEnergies[mon2] - 2625.5 * 0.5 * int(monHcaps[mon2]))
+        else:
+            # with disjoint dimers, the hydrogens cancel out 
+            inc = (dimerEnergies[dimer]) - (monEnergies[mon1]) - (monEnergies[mon2])
+        
+        intEnergy += inc
+    
+    mbe2 = sumMonEnergies + intEnergy
+    return mbe2
+    
+    
 
             
 
