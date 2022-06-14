@@ -114,7 +114,7 @@ def get_pi_elec(conjNodeList, conjEdgeList, graph):
     
     return tupleList
 
-def sigmoid_conj_hyper(x, max, tol=0.005):
+def sigmoid_conj_hyper(x, max, tol=0.05):
     # the min value is 0
     # a - exponent, x -variable
     a = -1 / max * math.log(tol/(2 - tol))

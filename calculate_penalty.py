@@ -9,6 +9,7 @@ import numpy as np
 from collections import Counter 
 import math
 import multiprocessing as mp
+import time
 
 def bond_order_penalty(graph, edges_to_cut_list):
     boList = [int(graph[edges[0]][edges[1]]['bo']) for edges in edges_to_cut_list]
@@ -203,7 +204,7 @@ def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
     tgraph.remove_edges_from(edges_to_cut_list)
     # print([x for x in nx.connected_components(tgraph)], file=open('connectedCompVol.dat', 'a'))
     connectedComp = (tgraph.subgraph(x) for x in nx.connected_components(tgraph))
-    penaltyList = [(load_data.get_volume(sg, proxMatrix)/refVol - 1)**2 for sg in connectedComp]
+    penaltyList = [(load_data.get_volume(sg, proxMatrix)/refVol - 1) for sg in connectedComp]
     penaltyList = [vol_sigmoid(x) for x in penaltyList]
     return round(sum(penaltyList)/len(penaltyList),4)
 
@@ -232,14 +233,20 @@ def sigmoid_peff(xvalue):
 def peff_penalty(graph, edges_to_cut_list, E):
     
     # getting the monomer, dimer (joined and disjoint) and graphs 
+    t1 = time.process_time()
     monFrags, monHcaps, jdimerFrags, jdimerHcaps = miscellaneous.peff_hfrags(graph, edges_to_cut_list) # monomer and joined dimers and their respective number of hydrogen caps 
+    # print('getting h cap time', time.process_time() - t1)
+    t2 = time.process_time()
     ddimerFrags = miscellaneous.disjoint_dimers(monFrags, jdimerFrags) # disjoint dimers
+    # print('disjoint dimer', time.process_time() - t2)
     # ^^ these are all dictionaries
     # monFrags and jdimerFrags already have hydrogen caps appended to them 
 
     # get mbe2 energy for each individual energy type: bond, angle, torsional, inversion, vdw
     # then sum altogether?
+    t3 = time.process_time()
     mbe2 = uff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps)
+    # print('mbe2 time', time.process_time() - t3)
     # print('mbe2', mbe2)
     
 
@@ -248,7 +255,7 @@ def peff_penalty(graph, edges_to_cut_list, E):
     # print('deviation', diff)
 
     # penalty = abs(E-mbe2)/abs(E-mbe2wcs)
-    return penalty
+    return round(penalty,4)
 
 def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E):
     penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), peff_penalty(graph, edges_to_cut_list, E), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]

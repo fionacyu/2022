@@ -5,6 +5,7 @@ import numpy as np
 from numpy import linalg
 import miscellaneous
 import load_data
+import time
 
 # parameters
 KCAL_TO_KJ = 4.184
@@ -115,7 +116,7 @@ def angle_energy(graph, prmDict):
     energy = 0.0 
 
     nodeList = [x for x in list(graph.nodes) if graph.degree[x] > 1]
-    for node in nodeList:
+    for node in nodeList: # node is the vertex
         theta0 = prmDict[graph.nodes[node]['at']].theta0 * DEG_TO_RADIAN
         cosT0 = np.cos(theta0)
         sinT0 = np.sin(theta0)
@@ -267,6 +268,7 @@ def vdw_energy(graph, prmDict):
         
         node1, node2 = pair[0], pair[1]
         dist = miscellaneous.shortest_path_length(gdict, node1, node2)[1]
+        # r = linalg.norm(np.array(graph.nodes[node1]['coord']) - np.array(graph.nodes[node2][]))
         if dist >= 3 or dist == 0:
             # print(pair, file=open('pair.txt', 'a'))
             # print(dist, file=open('pair.txt', 'a'))
@@ -343,11 +345,18 @@ def vdw_energy(graph, prmDict):
 def total_energy(graph):
     prmDict = load_data.read_prm()
     energy = 0.0
+    t2 = time.process_time()
     energy += bond_energy(graph, prmDict)
+    # print('bond time', time.process_time() - t2)
+    t3 = time.process_time()
     energy += angle_energy(graph, prmDict)
+    # print('angle time', time.process_time() - t3)
+    t4  = time.process_time()
     energy += torsional_energy(graph, prmDict)
+    # print('tor time', time.process_time() - t4)
+    t1 = time.process_time()
     energy += vdw_energy(graph, prmDict)
-
+    # print('vdw time', time.process_time() - t1)
     return energy
 
 def dimer_comp(dname):
@@ -357,18 +366,21 @@ def mbe2(monFrag, jdFrag, ddFrag, monHcaps, jdimerHcaps):
     monEnergies = {}
     jdEnergies, ddEnergies = {}, {}
 
+    t1 = time.process_time()
     for mon in monFrag:
         monEnergies[mon] = total_energy(monFrag[mon])
         # print(mon, total_energy(monFrag[mon]))
-    
+    # print('mon energy time', time.process_time() - t1)
+    t2 = time.process_time()
     for jd in jdFrag:
         jdEnergies[jd] = total_energy(jdFrag[jd])
         # print(jd, total_energy(jdFrag[jd]))
-
+    # print('jd energy time', time.process_time() - t2)
+    t3 = time.process_time()
     for dd in ddFrag:
         ddEnergies[dd] = total_energy(ddFrag[dd])
         # print(dd, total_energy(ddFrag[dd]))
-    
+    # print('dd energy time', time.process_time() - t3)
     sumMonEnergiesH = sum(monEnergies[x] for x in monEnergies)
     sumMonEnergies = sumMonEnergiesH - 0.5 *2625.5 * sum([v for _, v in monHcaps.items()])
 
