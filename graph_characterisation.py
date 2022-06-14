@@ -112,8 +112,7 @@ def check_hybrid(graph): #check for hybridisation of oxygen, sulfur and nitrogen
                         graph.nodes[element]['ed'] = 3
                     
         # nitrogen (oxygen) has a special case like in formamide (anisole) etc. where it needs to look at a branch of sp/sp2 atoms
-        # also considering the halogens where pi back donation is present
-        noList = [x for x in graph.nodes() if graph.nodes[x]['element'] == 'N' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'O' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'F' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'Cl' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'Br' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'I' and graph.nodes[x]['ed'] == 4]
+        noList = [x for x in graph.nodes() if graph.nodes[x]['element'] == 'N' and graph.nodes[x]['ed'] == 4]# + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'O' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'F' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'Cl' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'Br' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'I' and graph.nodes[x]['ed'] == 4]
         for node in noList:
             secondNeigh = list(nx.dfs_edges(graph, source=node, depth_limit=2))
             del secondNeigh[0]

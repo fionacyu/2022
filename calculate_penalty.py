@@ -162,30 +162,39 @@ def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
 
     return round(sum(penaltyList)/len(penaltyList), 4)
 
-def ring_strain(size):
-    m, d, a, b, l = 1.30822, -125.911, 0.312439, 1.19633, -188.39
-    y = size
-    strain = pow(y, -1*m) * (d - 1 - l) + ((y-1+l)/y) * np.exp(-1 * a * (y-1)) * np.cos(b * (y-1)) 
-    return strain.real
+# def ring_strain(size):
+#     m, d, a, b, l = 1.30822, -125.911, 0.312439, 1.19633, -188.39
+#     y = size
+#     strain = pow(y, -1*m) * (d - 1 - l) + ((y-1+l)/y) * np.exp(-1 * a * (y-1)) * np.cos(b * (y-1)) 
+#     return strain.real
 
-def ring_penalty(graph, cycleDict, edges_to_cut_list):
-    if len(cycleDict) == 0:
-        return 0
-    # box edges go here, get the edges that would only be near cycles
-    boxLabelList = list(dict.fromkeys(miscellaneous.flatten([cycleDict[x].boxLabelList for x in cycleDict])))
-    edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or  len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0  ]
+# def ring_penalty(graph, cycleDict, edges_to_cut_list):
+#     if len(cycleDict) == 0:
+#         return 0
+#     # box edges go here, get the edges that would only be near cycles
+#     boxLabelList = list(dict.fromkeys(miscellaneous.flatten([cycleDict[x].boxLabelList for x in cycleDict])))
+#     edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or  len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0  ]
 
-    impactedCycles = [c for c in cycleDict if len(set(edgesBoxes).intersection(cycleDict[c].edgeList)) > 0]
-    impactedCycleSize = [len(cycleDict[c].edgeList) for c in impactedCycles]
-    totalstrain = round(sum([ring_strain(x) for x in impactedCycleSize]),4)
-    # return abs(totalstrain)
-    return round(abs(totalstrain)/658.7,4) # relative error
+#     impactedCycles = [c for c in cycleDict if len(set(edgesBoxes).intersection(cycleDict[c].edgeList)) > 0]
+#     impactedCycleSize = [len(cycleDict[c].edgeList) for c in impactedCycles]
+#     totalstrain = round(sum([ring_strain(x) for x in impactedCycleSize]),4)
+#     # return abs(totalstrain)
+#     return round(abs(totalstrain)/658.7,4) # relative error
 
 def reference_vol(atoms, minAtomNo):
     atomCount = Counter(atoms)
     refRad = sum([v/len(atoms) * load_data.get_radii(k) for k,v in atomCount.items() ])
     refVol = 4/3 * math.pi * refRad**3 * minAtomNo
     return refVol
+
+def vol_sigmoid(xvalue):
+    # this sigmoid function has the x squared, functional form: 2/(1+exp(-ax^2)) - 1
+    tol = 0.05 # 5% deviation from the asymptotic value of 1
+    xref = 0.1 # only want 10% error 
+
+    # obtain exponent a
+    a = -1/(xref * xref) * math.log(-1 + 2/(2-tol))
+    return 2/(1 + math.exp(-a * xvalue * xvalue)) - 1
 
 
 def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
@@ -195,9 +204,32 @@ def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
     # print([x for x in nx.connected_components(tgraph)], file=open('connectedCompVol.dat', 'a'))
     connectedComp = (tgraph.subgraph(x) for x in nx.connected_components(tgraph))
     penaltyList = [(load_data.get_volume(sg, proxMatrix)/refVol - 1)**2 for sg in connectedComp]
+    penaltyList = [vol_sigmoid(x) for x in penaltyList]
     return round(sum(penaltyList)/len(penaltyList),4)
 
-def peff_penalty(graph, edges_to_cut_list):
+
+# def peff_wcs(graph, feasible_edges_list, E): # cut all feasible edges
+#     monFrags, monHcaps, jdimerFrags, jdimerHcaps = miscellaneous.peff_hfrags(graph, feasible_edges_list) # monomer and joined dimers and their respective number of hydrogen caps 
+#     ddimerFrags = miscellaneous.disjoint_dimers(monFrags, jdimerFrags)
+
+#     mbe2 = uff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps)
+#     diff = 1000 * abs(E-mbe2)/2625.5 # energy in mH
+#     return diff
+
+
+def sigmoid_peff(xvalue):
+    # between 2 and 4.2 kj/mol
+    # midpoint of 2 and 4.2 is 3.1
+    tol = 0.05
+    xref = 2 # (lower value)
+    # at x = 2, the output is 0 + tol = tol
+
+    # obtain exponent a
+    a = -1 * math.log((1/tol) - 1) / (xref - 3.1)
+    return 1/(1 + math.exp(-a *(xvalue - 3.1)))
+
+
+def peff_penalty(graph, edges_to_cut_list, E):
     
     # getting the monomer, dimer (joined and disjoint) and graphs 
     monFrags, monHcaps, jdimerFrags, jdimerHcaps = miscellaneous.peff_hfrags(graph, edges_to_cut_list) # monomer and joined dimers and their respective number of hydrogen caps 
@@ -209,16 +241,17 @@ def peff_penalty(graph, edges_to_cut_list):
     # then sum altogether?
     mbe2 = uff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps)
     # print('mbe2', mbe2)
-    E = uff.total_energy(graph)
-
-    diff = 1000 * abs(E-mbe2)/2625.5 # energy in mH
-    # print('deviation', diff)
     
 
+    diff = abs(E-mbe2) # energy in kj/mol
+    penalty = sigmoid_peff(diff)
+    # print('deviation', diff)
 
+    # penalty = abs(E-mbe2)/abs(E-mbe2wcs)
+    return penalty
 
-def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
-    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), ring_penalty(graph, cycleDict, edges_to_cut_list), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E):
+    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), peff_penalty(graph, edges_to_cut_list, E), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
     # print('penalty_list:', penalty_list)
     beta_values = np.array(betalist)
@@ -226,10 +259,10 @@ def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, a
     total_penalty = np.dot(penalty_list, beta_values)
     return total_penalty
 
-def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
+def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E):
     edges_to_cut_list = optimize.convert_bvector_edges1(x, feasible_edges)
     pool = mp.Pool(mp.cpu_count())
-    penalty_list = pool.starmap_async(miscellaneous.full_penalty, [(atoms, graph, x[i], edges_to_cut_list[i], conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo) for i in range(len(edges_to_cut_list))]).get()
+    penalty_list = pool.starmap_async(miscellaneous.full_penalty, [(atoms, graph, x[i], edges_to_cut_list[i], conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E) for i in range(len(edges_to_cut_list))]).get()
     pool.close()
     return penalty_list
     

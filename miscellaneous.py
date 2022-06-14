@@ -1,4 +1,3 @@
-from ctypes.wintypes import HACCEL
 import rings
 import hyperconj
 import sys
@@ -123,8 +122,8 @@ def sigmoid_conj_hyper(x, max, tol=0.005):
     
 
 
-def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo):
-    penalty_list = [calculate_penalty.bond_order_penalty(graph, edges_to_cut_list), calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.ring_penalty(graph, cycleDict, edges_to_cut_list), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E):
+    penalty_list = [calculate_penalty.bond_order_penalty(graph, edges_to_cut_list), calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.peff_penalty(graph, edges_to_cut_list, E), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
     print(("%-20s " * len(penalty_list)) % tuple([str(i) for i in penalty_list]), file=open('penalties.dat', "a"))
     print(', '.join(str(j) for j in pos),file=open('positions.dat', "a"))
@@ -209,6 +208,7 @@ def get_fragments(graph, optimal_edges_to_cut, coordinates):
     return symbolList, coordList, weightList, idList, hfragDict, fragNodes
 
 def peff_hfrags(graph, edges_to_cut_list):
+    # print(edges_to_cut_list)
     fgraph = graph.copy()
     fgraph.remove_edges_from(edges_to_cut_list)
 
@@ -220,35 +220,45 @@ def peff_hfrags(graph, edges_to_cut_list):
         sg1 = sg.copy()
         # print('mon :', i+1)
         cc = list(sg.nodes)
+        # print('cc', cc)
         # fragNodes[i+1] = [x for x in cc]
 
         nodes_affected = set(flatten(edges_to_cut_list)).intersection(cc) 
         edges_cut = [e for e in edges_to_cut_list if any([e[0] in nodes_affected, e[1] in nodes_affected])] # gets the edges that were cut to make the fragment
 
+        # print('edges_cut', edges_cut)
         for edge in edges_cut:
-            nodeh = min(set(edge) - set([x for x in cc])) # node replaced with hydrogen 
-            othernode = min(set(edge).intersection([x for x in cc]))
+            # print('edge', edge)
+            # print(set(edge), set(cc))
+            try:
+                nodeh = min(set(edge) - set(cc)) # node replaced with hydrogen 
+                # print('nodeh', nodeh)
+                othernode = min(set(edge).intersection([x for x in cc]))
 
-            nodehel = graph.nodes[nodeh]['element']
-            othernodeel = graph.nodes[othernode]['element']
+                nodehel = graph.nodes[nodeh]['element']
+                othernodeel = graph.nodes[othernode]['element']
 
-            if nodehel == 'C':
-                    degree = graph.degree[nodeh]
-                    nodehel = 'C' + str(degree)
-                
-            if othernodeel == 'C':
-                degree = graph.degree[othernode]
-                othernodeel = 'C' + str(degree)
+                if nodehel == 'C':
+                        degree = graph.degree[nodeh]
+                        nodehel = 'C' + str(degree)
+                    
+                if othernodeel == 'C':
+                    degree = graph.degree[othernode]
+                    othernodeel = 'C' + str(degree)
 
-            scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
-            # hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
-            hcoords = list(np.array(graph.nodes[othernode]['coord']) + scalar * (np.array(graph.nodes[nodeh]['coord']) - np.array(graph.nodes[othernode]['coord'])))
+                scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
+                # hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
+                hcoords = list(np.array(graph.nodes[othernode]['coord']) + scalar * (np.array(graph.nodes[nodeh]['coord']) - np.array(graph.nodes[othernode]['coord'])))
 
-            ncount += 1
-            # print(ncount, {"element": 'H', "coord": hcoords})
-            sg1.add_node(ncount, **{"element": 'H', "charge": 0, "coord": hcoords,"ed":1,  "at": 'H_'})
-            sg1.add_edge(ncount, othernode, **{'bo': 1, 'r': linalg.norm(np.array(hcoords) - np.array(graph.nodes[othernode]['coord']))})
-        
+                ncount += 1
+                # print(ncount, {"element": 'H', "coord": hcoords})
+                sg1.add_node(ncount, **{"element": 'H', "charge": 0, "coord": hcoords,"ed":1,  "at": 'H_'})
+                sg1.add_edge(ncount, othernode, **{'bo': 1, 'r': linalg.norm(np.array(hcoords) - np.array(graph.nodes[othernode]['coord']))})
+            
+            except ValueError: # the nodes are still connected (occurs in ring systems)
+                continue
+                # sys.exit()
+            
         monFrags['%d' % (i+1)] = sg1
         monHcaps['%d' % (i+1)] = len(list(sg1.nodes)) - len(cc)
 
@@ -260,10 +270,11 @@ def peff_hfrags(graph, edges_to_cut_list):
     monids = range(1,count)
     monpairs = [x for x in combinations(monids, 2)]
     existing_pairs = []
-    for e in edges_to_cut_list:
-
+    for e in edges_to_cut_list: # dimers
+        # print('edge', e)
         nodes = nx.node_connected_component(fgraph, e[0]) | nx.node_connected_component(fgraph, e[1])
         hcaps = 0
+        status = 0
         for pair in monpairs:
             mon1nodes, mon2nodes = [x for x in monFrags[str(pair[0])].nodes if x <= len(list(graph.nodes))], [x for x in monFrags[str(pair[1])].nodes if x <= len(list(graph.nodes))]
             # print('mon nodes', set(mon1nodes) | set(mon2nodes))
@@ -272,6 +283,7 @@ def peff_hfrags(graph, edges_to_cut_list):
 
                 if pair not in existing_pairs:
                     mon1, mon2 = pair[0], pair[1]
+                    status = 1
                     # print('jdimer :', mon1, mon2)
                     mon1graph, mon2graph = monFrags[str(pair[0])].copy(), monFrags[str(pair[1])].copy()
                     mon1graph.remove_nodes_from(list(set(mon1graph.nodes) - set(mon1nodes)))
@@ -315,10 +327,13 @@ def peff_hfrags(graph, edges_to_cut_list):
                 break
             else:
                 continue
+        if status == 1: # otherwise we have a situation where cutting the bond does not lead to distinct monomers (occurs in ring systems)
+            pairs = sorted([mon1, mon2])
         
-        pairs = sorted([mon1, mon2])
-        jdimerFrags['%d_%d' % (pairs[0], pairs[1])] = jdimer
-        jdimerHcaps['%d_%d' % (pairs[0], pairs[1])] = len(jdimer.nodes) - len(nodes)
+            # print(edges_to_cut_list)
+            # print('edge', e)
+            jdimerFrags['%d_%d' % (pairs[0], pairs[1])] = jdimer
+            jdimerHcaps['%d_%d' % (pairs[0], pairs[1])] = len(jdimer.nodes) - len(nodes)
 
     # print('monHcaps', monHcaps)
     # print('jdimerHcaps', jdimerHcaps)

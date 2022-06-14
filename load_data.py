@@ -164,7 +164,7 @@ def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for vo
         alpha2 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * get_radii(atom2)**3), 2/3) # 2√2 is taken to be the amplitude of the Gaussian
 
         incVol = 8 * math.exp( -1 * (alpha1 * alpha2 * dist**2)/(alpha1 + alpha2)) * pow(math.pi/(alpha1 + alpha2), 3/2) # incremental volume
-        pairVol = pairVol + (2 * incVol)
+        pairVol = pairVol + (2 * incVol) # multiply by 2 because there are two possibiltiies e.g. AB and BA
     
     # del incVol # resetting variable
 

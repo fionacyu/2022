@@ -21,7 +21,7 @@ mp.set_start_method('fork')
 
 os.system('rm *.dat')
 os.system('rm -r fragxyz')
-penNames = ['bo', 'aromaticity', 'ring',  'conjugation', 'hyperconjugation', 'volume']
+penNames = ['bo', 'aromaticity', 'penergy',  'conjugation', 'hyperconjugation', 'volume']
 print(("%-20s " * len(penNames)) % tuple([str(i) for i in penNames]), file=open('penalties.dat', "a"))
 
 parser = argparse.ArgumentParser()
@@ -145,15 +145,17 @@ donorDict, acceptorDict, aromaticDict = boxing.all_classification(G, donorDict, 
 # print('total time: ', final_time)
 
 t8 = time.process_time()
-betalist = [0,0,0,0,0,1]
+betalist = [1,1,1,1,1,1]
 # total_penalty = calculate_penalty.full_penalty(atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo)
 # print('total_penalty', total_penalty)
 # print('total penalty time', time.process_time() - t8)
 
 feasible_edges = optimize.get_feasible_edges(G)
 print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', "a"))
+E = uff.total_energy(G)
+# mbe2wcs = calculate_penalty.peff_wcs(G, feasible_edges, E)
 dim = len(feasible_edges)
-pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo, dim)
+pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, dim, E)
 # pos = np.array([1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0])
 print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
 
@@ -175,6 +177,7 @@ with open('frag.json', 'w') as fp:
     json.dump(molDict, fp, indent=4)
 miscellaneous.fragment_xyz(symbolList, coordList, idList, G, coordinates, hfragDict, fragNodes)
 
+peff_penalty = calculate_penalty.peff_penalty(G, optimize.convert_bvector_edges(pos, feasible_edges), E)
 # calculate_penalty.peff_penalty(G, optimize.convert_bvector_edges(pos, feasible_edges))
 
 # prmDict = load_data.read_prm()

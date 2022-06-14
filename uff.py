@@ -359,15 +359,15 @@ def mbe2(monFrag, jdFrag, ddFrag, monHcaps, jdimerHcaps):
 
     for mon in monFrag:
         monEnergies[mon] = total_energy(monFrag[mon])
-        print(mon, total_energy(monFrag[mon]))
+        # print(mon, total_energy(monFrag[mon]))
     
     for jd in jdFrag:
         jdEnergies[jd] = total_energy(jdFrag[jd])
-        print(jd, total_energy(jdFrag[jd]))
+        # print(jd, total_energy(jdFrag[jd]))
 
     for dd in ddFrag:
         ddEnergies[dd] = total_energy(ddFrag[dd])
-        print(dd, total_energy(ddFrag[dd]))
+        # print(dd, total_energy(ddFrag[dd]))
     
     sumMonEnergiesH = sum(monEnergies[x] for x in monEnergies)
     sumMonEnergies = sumMonEnergiesH - 0.5 *2625.5 * sum([v for _, v in monHcaps.items()])
