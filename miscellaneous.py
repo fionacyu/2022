@@ -119,7 +119,6 @@ def sigmoid_conj_hyper(x, max, tol=0.05):
     # a - exponent, x -variable
     a = -1 / max * math.log(tol/(2 - tol))
     return (1 - math.exp(-1 * a * x))/(1 + math.exp(-1 * a * x))
-    
 
 
 def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E):

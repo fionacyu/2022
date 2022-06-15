@@ -208,16 +208,6 @@ def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
     penaltyList = [vol_sigmoid(x) for x in penaltyList]
     return round(sum(penaltyList)/len(penaltyList),4)
 
-
-# def peff_wcs(graph, feasible_edges_list, E): # cut all feasible edges
-#     monFrags, monHcaps, jdimerFrags, jdimerHcaps = miscellaneous.peff_hfrags(graph, feasible_edges_list) # monomer and joined dimers and their respective number of hydrogen caps 
-#     ddimerFrags = miscellaneous.disjoint_dimers(monFrags, jdimerFrags)
-
-#     mbe2 = uff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps)
-#     diff = 1000 * abs(E-mbe2)/2625.5 # energy in mH
-#     return diff
-
-
 def sigmoid_peff(xvalue):
     # between 2 and 4.2 kj/mol
     # midpoint of 2 and 4.2 is 3.1
@@ -227,7 +217,22 @@ def sigmoid_peff(xvalue):
 
     # obtain exponent a
     a = -1 * math.log((1/tol) - 1) / (xref - 3.1)
-    return 1/(1 + math.exp(-a *(xvalue - 3.1)))
+    # sometimes xvalue may be too positive or too negative and can shoot the exponential to infinity
+    # can cause overflow error
+    # treat the positive and negative curves separately
+
+    # positive curve
+    try:
+        positive = 1/(1 + math.exp(-a *(xvalue - 3.1)))
+    except OverflowError:
+        positive = 0.0
+    
+    # negative curve
+    try:
+        negative = 1/(1 + math.exp(-a *(-1 * xvalue - 3.1)))
+    except OverflowError:
+        negative = 0.0
+    return positive + negative #1/(1 + math.exp(-a *(xvalue - 3.1))) + 1/(1 + math.exp(-a *(-1 * xvalue - 3.1)))
 
 
 def peff_penalty(graph, edges_to_cut_list, E):
@@ -250,7 +255,7 @@ def peff_penalty(graph, edges_to_cut_list, E):
     # print('mbe2', mbe2)
     
 
-    diff = abs(E-mbe2) # energy in kj/mol
+    diff = E-mbe2 # energy in kj/mol
     penalty = sigmoid_peff(diff)
     # print('deviation', diff)
 
