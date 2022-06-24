@@ -120,9 +120,12 @@ def sigmoid_conj_hyper(x, max, tol=0.05):
     a = -1 / max * math.log(tol/(2 - tol))
     return (1 - math.exp(-1 * a * x))/(1 + math.exp(-1 * a * x))
 
+def nodes_connected(u, v, G):
+    return u in G.neighbors(v)
 
-def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E):
-    penalty_list = [calculate_penalty.bond_order_penalty(graph, edges_to_cut_list), calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.peff_penalty(graph, edges_to_cut_list, E), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+
+def full_penalty(atoms, graph, pos, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict):
+    penalty_list = [calculate_penalty.bond_order_penalty(graph, edges_to_cut_list), calculate_penalty.aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), calculate_penalty.peff_penalty3(graph, edges_to_cut_list, E, prmDict), calculate_penalty.conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), calculate_penalty.hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), calculate_penalty.volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
     print(("%-20s " * len(penalty_list)) % tuple([str(i) for i in penalty_list]), file=open('penalties.dat', "a"))
     print(', '.join(str(j) for j in pos),file=open('positions.dat', "a"))
@@ -213,6 +216,7 @@ def peff_hfrags(graph, edges_to_cut_list):
 
     monFrags, jdimerFrags = {}, {}
     monHcaps, jdimerHcaps = {}, {}
+    jdimerEdges = {}
     connectedComp = (fgraph.subgraph(x) for x in nx.connected_components(fgraph))
     ncount = len(list(graph.nodes))
     for i, sg in enumerate(connectedComp):
@@ -282,6 +286,8 @@ def peff_hfrags(graph, edges_to_cut_list):
 
                 if pair not in existing_pairs:
                     mon1, mon2 = pair[0], pair[1]
+                    pairs = sorted([mon1, mon2])
+                    
                     status = 1
                     # print('jdimer :', mon1, mon2)
                     mon1graph, mon2graph = monFrags[str(pair[0])].copy(), monFrags[str(pair[1])].copy()
@@ -289,6 +295,7 @@ def peff_hfrags(graph, edges_to_cut_list):
                     mon2graph.remove_nodes_from(list(set(mon2graph.nodes) - set(mon2nodes)))
                     jdimer = nx.compose(mon1graph, mon2graph)
                     jdimer.add_edge(e[0], e[1], **{'bo': graph[e[0]][e[1]]['bo'], 'r': linalg.norm(np.array(graph.nodes[e[0]]['coord']) - np.array(graph.nodes[e[1]]['coord']))})
+                    jdimerEdges['%d_%d' % (pairs[0], pairs[1])] = [e]
                     existing_pairs.append(pair)
 
                     nodes_affected = set(flatten(edges_to_cut_list)).intersection(nodes) 
@@ -322,7 +329,11 @@ def peff_hfrags(graph, edges_to_cut_list):
                             jdimer.add_edge(ncount, othernode, **{'bo': 1, 'r': linalg.norm(np.array(hcoords) - np.array(graph.nodes[othernode]['coord']))})
 
                         except ValueError:
-                            continue
+                            if frozenset(edg) != frozenset(e):
+                                jdimer.add_edge(edg[0], edg[1], **{'bo': graph[edg[0]][edg[1]]['bo'], 'r': linalg.norm(np.array(graph.nodes[edg[0]]['coord']) - np.array(graph.nodes[edg[1]]['coord']))})
+                                jdimerEdges['%d_%d' % (pairs[0], pairs[1])].append(edg)
+                                # add the other edge which was broken in order to yield the broken ring
+                            # continue 
                 break
             else:
                 continue
@@ -336,7 +347,7 @@ def peff_hfrags(graph, edges_to_cut_list):
 
     # print('monHcaps', monHcaps)
     # print('jdimerHcaps', jdimerHcaps)
-    return monFrags, monHcaps, jdimerFrags, jdimerHcaps
+    return monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges
     
 def disjoint_dimers(monFrags, jdimerFrags):
     monKeys = list(monFrags)

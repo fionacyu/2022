@@ -1,14 +1,16 @@
+from torch import combinations
 import optimize
 import load_data
 import uff
 from cmath import cos, exp
 import miscellaneous
 import networkx as nx
-from itertools import chain
+from itertools import chain, product
 import numpy as np 
 from collections import Counter 
 import math
 import multiprocessing as mp
+from numpy import linalg
 import time
 
 def bond_order_penalty(graph, edges_to_cut_list):
@@ -234,12 +236,16 @@ def sigmoid_peff(xvalue):
         negative = 0.0
     return positive + negative #1/(1 + math.exp(-a *(xvalue - 3.1))) + 1/(1 + math.exp(-a *(-1 * xvalue - 3.1)))
 
+def sigmoid_peff2(xvalue, noedges):
+    xmapped = xvalue * noedges
+    return sigmoid_peff(xmapped)
+
 
 def peff_penalty(graph, edges_to_cut_list, E):
     
-    # getting the monomer, dimer (joined and disjoint) and graphs 
+    # getting the monomer, dimer (joined and disjoint) graphs 
     t1 = time.process_time()
-    monFrags, monHcaps, jdimerFrags, jdimerHcaps = miscellaneous.peff_hfrags(graph, edges_to_cut_list) # monomer and joined dimers and their respective number of hydrogen caps 
+    monFrags, monHcaps, jdimerFrags, jdimerHcaps, _ = miscellaneous.peff_hfrags(graph, edges_to_cut_list) # monomer and joined dimers and their respective number of hydrogen caps 
     # print('getting h cap time', time.process_time() - t1)
     t2 = time.process_time()
     ddimerFrags = miscellaneous.disjoint_dimers(monFrags, jdimerFrags) # disjoint dimers
@@ -257,13 +263,109 @@ def peff_penalty(graph, edges_to_cut_list, E):
 
     diff = E-mbe2 # energy in kj/mol
     penalty = sigmoid_peff(diff)
-    # print('deviation', diff)
+    print('deviation original', diff)
 
     # penalty = abs(E-mbe2)/abs(E-mbe2wcs)
     return round(penalty,4)
 
-def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E):
-    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), peff_penalty(graph, edges_to_cut_list, E), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+def peff_penalty3(graph, edges_to_cut_list, E, prmDict):
+    monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges = miscellaneous.peff_hfrags(graph, edges_to_cut_list) 
+
+    mbe2 = uff.mbe2_eff(monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges, prmDict)
+    diff = E - mbe2
+    # print('deviation effective', diff)
+    penalty = sigmoid_peff(diff)
+
+    return round(penalty, 4)
+
+def peff_penalty2(graph, edges_to_cut_list, E):
+    penaltyList = []
+    for edge in edges_to_cut_list:
+        graphList = []
+        tgraph = graph.copy() 
+        tgraph.remove_edges_from([edge])
+        connectedComp = (tgraph.subgraph(x) for x in nx.connected_components(tgraph))
+        connected_comp_list = [x for x in nx.connected_components(tgraph)]
+
+        node1, node2 = edge[0], edge[1]
+        ncount = len(graph.nodes)
+        if len(connected_comp_list) == 2: # the molecule is broken into two fragments
+            for sg in connectedComp:
+                # print(list(sg.nodes), file=open('effnodes.dat', 'a'))
+                sg1 = sg.copy()
+                cc = list(sg.nodes)
+                nodeh = min(set(edge) - set(cc)) # the node to be replaced with hydrogen 
+                othernode = min(set(edge) - set([nodeh]))
+
+                nodehel = graph.nodes[nodeh]['element']
+                othernodeel = graph.nodes[othernode]['element']
+
+                if nodehel == 'C':
+                        degree = graph.degree[nodeh]
+                        nodehel = 'C' + str(degree)
+                    
+                if othernodeel == 'C':
+                    degree = graph.degree[othernode]
+                    othernodeel = 'C' + str(degree)
+
+                scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
+                # hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
+                hcoords = list(np.array(graph.nodes[othernode]['coord']) + scalar * (np.array(graph.nodes[nodeh]['coord']) - np.array(graph.nodes[othernode]['coord'])))
+
+                ncount += 1
+
+                sg1.add_node(ncount, **{"element": 'H', "charge": 0, "coord": hcoords,"ed":1,  "at": 'H_'})
+                sg1.add_edge(ncount, othernode, **{'bo': 1, 'r': linalg.norm(np.array(hcoords) - np.array(graph.nodes[othernode]['coord']))})
+                graphList.append(sg1)
+        
+        if len(connected_comp_list) == 1: # this occur when we break a bond in a ring 
+            print(list(tgraph.nodes), file=open('effnodes.dat', 'a'))
+            node1el = graph.nodes[node1]['element']
+            node2el = graph.nodes[node2]['element']
+
+            if node1el == 'C':
+                degree = graph.degree[node1]
+                node1el = 'C' + str(degree)
+            
+            if node2el == 'C':
+                degree = graph.degree[node2]
+                node2el = 'C' + str(degree)
+            
+            scalar1 = (load_data.get_covradii('H') + load_data.get_covradii(node2el)) / (load_data.get_covradii(node1el) + load_data.get_covradii(node2el))
+            scalar2 = (load_data.get_covradii('H') + load_data.get_covradii(node1el)) / (load_data.get_covradii(node1el) + load_data.get_covradii(node2el))
+
+            hcoords1 = list(np.array(graph.nodes[node2]['coord']) + scalar1 * (np.array(graph.nodes[node1]['coord']) - np.array(graph.nodes[node2]['coord'])))
+            hcoords2 = list(np.array(graph.nodes[node1]['coord']) + scalar2 * (np.array(graph.nodes[node2]['coord']) - np.array(graph.nodes[node1]['coord'])))
+
+            tgraph.add_node(ncount + 1, **{"element": 'H', "charge": 0, "coord": hcoords1,"ed":1,  "at": 'H_'})
+            tgraph.add_node(ncount + 2, **{"element": 'H', "charge": 0, "coord": hcoords2,"ed":1,  "at": 'H_'})
+
+            tgraph.add_edge(ncount + 1, node2, **{'bo': 1, 'r': linalg.norm(np.array(hcoords1) - np.array(graph.nodes[node2]['coord']))})
+            tgraph.add_edge(ncount + 2, node1, **{'bo': 1, 'r': linalg.norm(np.array(hcoords2) - np.array(graph.nodes[node1]['coord']))})
+
+            graphList.append(tgraph)
+        
+        
+        fenergy = 0.0
+        for g in graphList:
+            fenergy += uff.total_energy(g)
+    
+        diff = E - fenergy
+        # diff = E - (fenergy - 2 * 0.5 * 2625.5) # removing the energies of the hydrogen caps, hydrogen = 0.5 Hartrees
+        # we are only breaking single bonds therefore for each broken single bond, there are two hydrogen caps 
+        # print(diff, file=open('peff.dat', 'a'))
+        # penaltyList.append(sigmoid_peff2(diff, len(edges_to_cut_list)))
+        penaltyList.append(sigmoid_peff(diff))
+
+    print(penaltyList, file=open('peff2.dat', 'a'))
+    if penaltyList:
+        return round(sum(penaltyList)/len(penaltyList),4)    
+    else:
+        return 0.0
+            
+
+def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict):
+    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), peff_penalty3(graph, edges_to_cut_list, E, prmDict), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
     # print('penalty_list:', penalty_list)
     beta_values = np.array(betalist)
@@ -271,10 +373,10 @@ def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, a
     total_penalty = np.dot(penalty_list, beta_values)
     return total_penalty
 
-def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E):
+def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict):
     edges_to_cut_list = optimize.convert_bvector_edges1(x, feasible_edges)
     pool = mp.Pool(mp.cpu_count())
-    penalty_list = pool.starmap_async(miscellaneous.full_penalty, [(atoms, graph, x[i], edges_to_cut_list[i], conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E) for i in range(len(edges_to_cut_list))]).get()
+    penalty_list = pool.starmap_async(miscellaneous.full_penalty, [(atoms, graph, x[i], edges_to_cut_list[i], conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict) for i in range(len(edges_to_cut_list))]).get()
     pool.close()
     return penalty_list
     

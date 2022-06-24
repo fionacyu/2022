@@ -99,11 +99,11 @@ donorDict, acceptorDict, aromaticDict = boxing.all_classification(G, donorDict, 
 # for node in list(G.nodes):
 #     print(node, G.nodes[node])
 
-# nonHedges = [e for e in G.edges if G.nodes[e[0]]['element'] != 'H' and G.nodes[e[1]]['element'] != 'H']
-# np.random.RandomState(100)
-# binaryList = np.random.randint(2,size=len(nonHedges))
+nonHedges = [e for e in G.edges if G.nodes[e[0]]['element'] != 'H' and G.nodes[e[1]]['element'] != 'H']
+np.random.RandomState(100)
+binaryList = np.random.randint(2,size=len(nonHedges))
 
-# edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
+edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
 # print('edges_to_cut_list', edges_to_cut_list)
 
 
@@ -144,7 +144,11 @@ donorDict, acceptorDict, aromaticDict = boxing.all_classification(G, donorDict, 
 # final_time = time.process_time() - t1
 # print('total time: ', final_time)
 
-t8 = time.process_time()
+prmDict = load_data.read_prm()
+E = uff.total_energy(G)
+# peff_penalty = calculate_penalty.peff_penalty3(G, edges_to_cut_list, E, prmDict)
+# print('peff_penalty3', peff_penalty)
+# t8 = time.process_time()
 betalist = [1,1,1,1,1,1]
 # total_penalty = calculate_penalty.full_penalty(atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, cycleDict, betalist, proxMatrix, minAtomNo)
 # print('total_penalty', total_penalty)
@@ -152,12 +156,19 @@ betalist = [1,1,1,1,1,1]
 
 feasible_edges = optimize.get_feasible_edges(G)
 print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', "a"))
-E = uff.total_energy(G)
+
 # mbe2wcs = calculate_penalty.peff_wcs(G, feasible_edges, E)
 dim = len(feasible_edges)
-pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, dim, E)
+pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, dim, E, prmDict)
 # pos = np.array([1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0])
+
 print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
+
+# peff = calculate_penalty.peff_penalty(G, optimize.convert_bvector_edges(pos, feasible_edges), E)
+# print('mbe2 original', peff)
+
+# peff2 = calculate_penalty.peff_penalty3(G,optimize.convert_bvector_edges(pos, feasible_edges), E, prmDict)
+# print('mbe2 effective', peff2)
 
 symbolList, coordList, weightList, idList, hfragDict, fragNodes = miscellaneous.get_fragments(G,  optimize.convert_bvector_edges(pos, feasible_edges), coordinates)
 # print('symbolList', symbolList)
@@ -177,21 +188,4 @@ with open('frag.json', 'w') as fp:
     json.dump(molDict, fp, indent=4)
 miscellaneous.fragment_xyz(symbolList, coordList, idList, G, coordinates, hfragDict, fragNodes)
 
-peff_penalty = calculate_penalty.peff_penalty(G, optimize.convert_bvector_edges(pos, feasible_edges), E)
-# calculate_penalty.peff_penalty(G, optimize.convert_bvector_edges(pos, feasible_edges))
 
-# prmDict = load_data.read_prm()
-# benergy = uff.bond_energy(G, prmDict)
-# print('bond energy', benergy)
-
-# aenergy = uff.angle_energy(G, prmDict)
-# print('angle energy', aenergy)
-
-# torenergy = uff.torsional_energy(G, prmDict)
-# print('torsion energy', torenergy)
-
-# vdwenergy = uff.vdw_energy(G, prmDict)
-# print('vdw energy', vdwenergy)
-
-# tenergy = uff.total_energy(G)
-# print('total energy', tenergy)
