@@ -110,6 +110,7 @@ def check_hybrid(graph): #check for hybridisation of oxygen, sulfur and nitrogen
                 for comb in combinations(haNeighbours, 2):
                     if graph.nodes[comb[0]]['ed'] < 4 and graph.nodes[comb[1]]['ed'] < 4:
                         graph.nodes[element]['ed'] = 3
+                        graph.nodes[element]['at'] = graph.nodes[element]['element'] + "_2"
                     
         # nitrogen (oxygen) has a special case like in formamide (anisole) etc. where it needs to look at a branch of sp/sp2 atoms
         noList = [x for x in graph.nodes() if graph.nodes[x]['element'] == 'N' and graph.nodes[x]['ed'] == 4]# + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'O' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'F' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'Cl' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'Br' and graph.nodes[x]['ed'] == 4] + [x for x in graph.nodes() if graph.nodes[x]['element'] == 'I' and graph.nodes[x]['ed'] == 4]
@@ -124,6 +125,7 @@ def check_hybrid(graph): #check for hybridisation of oxygen, sulfur and nitrogen
 
                 if all(np.array(hybridList) < 4):
                     graph.nodes[node]['ed'] = 3
+                    graph.nodes[node]['at'] = "N_2"
                     break
 
         return graph
