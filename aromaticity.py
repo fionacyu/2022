@@ -90,7 +90,7 @@ def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict): # return
                         # print('hello')
                         small_aromatic_cycles.append([x for x in conjugated_edges[prod[1]] if x[0] in cycles and x[1] in cycles])
                         for e in [x for x in conjugated_edges[prod[1]] if x[0] in cycles and x[1] in cycles]:
-                            graph[e[0]][e[1]]['bo'] = 1.5 # ensuring bond order is 1.5 
+                            # graph[e[0]][e[1]]['bo'] = 1.5 # ensuring bond order is 1.5 
                             graph.nodes[e[0]]['at'], graph.nodes[e[1]]['at'] = graph.nodes[e[0]]['element'] + '_R', graph.nodes[e[1]]['element'] + '_R' # adjusting the atom type for UFF
                         # aromatic_edges.append([x for x in cycles])
         

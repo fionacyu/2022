@@ -16,11 +16,11 @@ def read_input(inputPath):
             elif 'charges' == category:
                 chargefile = data
             elif 'fragSize' == category:
-                minAtomNo = float(data)
+                desAtomNo = float(data)
     try:
-        return xyzFile, chargefile, minAtomNo
+        return xyzFile, chargefile, desAtomNo
     except NameError:
-        return xyzFile, None, minAtomNo
+        return xyzFile, None, desAtomNo
 
 def read_xyz(xyzFile, chargefile=False):
     if chargefile:
@@ -78,7 +78,11 @@ def get_bond_order(atom1, atom2, dist, tol):
             bo = max([k for k in dictionary if dictionary[k][0] - tol <= dist <= dictionary[k][1] + tol])
             return bo
         except ValueError:
-            return 0
+            highest_bo = max(list(dictionary))
+            if dist <= dictionary[highest_bo][0]:
+                return highest_bo
+            else:
+                return 0
     
     else:
         print('this program only handles the elements H, B, C, N, O, F, P, S, Cl, Br and I')

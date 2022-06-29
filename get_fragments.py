@@ -16,6 +16,7 @@ import multiprocessing as mp
 from collections import Counter
 import os
 import json
+import sys
 
 mp.set_start_method('fork')
 
@@ -31,7 +32,7 @@ parser.add_argument('--input', required=True)
 args = parser.parse_args()
 # xyzFile = args.xyz
 inputPath = args.input
-xyzFile, chargefile, minAtomNo = load_data.read_input(inputPath)
+xyzFile, chargefile, desAtomNo = load_data.read_input(inputPath)
 # if charge file is supplied
 
 t1 = time.process_time()
@@ -42,6 +43,10 @@ if not chargefile:
 #     atoms, coordinates, nodeList = load_data.read_xyz(xyzFile, chargeFile)
 else:
     atoms, coordinates, nodeList = load_data.read_xyz(xyzFile, chargefile)
+
+if len(atoms) <= desAtomNo:
+    print('Number of atoms in system is less than or equal to fragSize. Please consider leaving the system as one fragment or reducing fragSize.')
+    sys.exit()
 
 # construct graph of molecule 
 t2 = time.process_time()
@@ -159,7 +164,7 @@ print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', 
 
 # mbe2wcs = calculate_penalty.peff_wcs(G, feasible_edges, E)
 dim = len(feasible_edges)
-pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, dim, E, prmDict)
+pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, dim, E, prmDict)
 # pos = np.array([1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0])
 
 print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
