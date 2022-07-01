@@ -10,7 +10,7 @@ from collections import Counter
 import multiprocessing as mp
 import time
 
-def hybridisation2(graph, proxMatrix, tol=0.003):
+def hybridisation2(graph, proxMatrix, tol=0.005):
     # returns the edge attributes
     # print(proxMatrix)
     # print('ha')

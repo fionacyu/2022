@@ -17,7 +17,8 @@ from collections import Counter
 import os
 import json
 import sys
-
+import pygad
+from multiprocessing import Pool
 mp.set_start_method('fork')
 
 os.system('rm *.dat')
@@ -44,6 +45,9 @@ if not chargefile:
 else:
     atoms, coordinates, nodeList = load_data.read_xyz(xyzFile, chargefile)
 
+print('atom no: ', len(atoms))
+
+
 if len(atoms) <= desAtomNo:
     print('Number of atoms in system is less than or equal to fragSize. Please consider leaving the system as one fragment or reducing fragSize.')
     sys.exit()
@@ -52,10 +56,13 @@ if len(atoms) <= desAtomNo:
 t2 = time.process_time()
 G = nx.Graph()
 G = boxing.box_classification(coordinates, G, nodeList) # d parameter goes at the end of this function
+
 # print('boxing.box_classification time: ', time.process_time() - t2)
 
 t1 = time.process_time()
 G, conjugated_edges, proxMatrix = graph_characterisation.main(G, coordinates)
+# for edge in G.edges(data=True):
+#     print(edge)
 # print('graph_characterisation time: ', time.process_time() - t1)
 
 t3 = time.process_time()
@@ -97,8 +104,7 @@ donorDict, acceptorDict, aromaticDict = boxing.all_classification(G, donorDict, 
 # print('conjugated_edges', conjugated_edges)
 # print('conjugated nodes', set(chain(*conjugated_edges[0])))
 
-# for edge in G.edges(data=True):
-#     print(edge)
+
 
 
 # for node in list(G.nodes):
@@ -150,7 +156,9 @@ edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
 # print('total time: ', final_time)
 
 prmDict = load_data.read_prm()
+t11 = time.process_time()
 E = uff.total_energy(G)
+print('E time', time.process_time() - t11)
 # peff_penalty = calculate_penalty.peff_penalty3(G, edges_to_cut_list, E, prmDict)
 # print('peff_penalty3', peff_penalty)
 # t8 = time.process_time()
@@ -164,14 +172,111 @@ print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', 
 
 # mbe2wcs = calculate_penalty.peff_wcs(G, feasible_edges, E)
 dim = len(feasible_edges)
-pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, dim, E, prmDict)
+# pos = optimize.run_optimizer(atoms, G, feasible_edges, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, dim, E, prmDict)
 # pos = np.array([1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0])
+# pos = np.array([0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0])
 
-print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
+def fitness_function(solution, solution_idx):
+    solution1 = np.array(solution)
+    # print(' '.join(str(j) for j in solution1),file=open('positions.dat', "a"))
+    edges_to_cut_list = optimize.convert_bvector_edges(solution1, feasible_edges)
 
+    # need to multiply by -1 because GA only accepts maximization functions
+    penalty = - calculate_penalty.full_penalty_ga(solution1, atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, E, prmDict)
+    # print(penalty)
+    return round(penalty, 4)
+
+
+def fitness_wrapper(solution):
+    return fitness_function(solution, 0)
+
+
+class PooledGA(pygad.GA):
+    # def __init__(self):
+    best_fitness = -5.0
+    #     self.best_pos = np.array([])
+
+    def cal_pop_fitness(self):
+        global pool
+        
+        pop_fitness = pool.map(fitness_wrapper, self.population)
+        pop_fitness = np.array(pop_fitness)
+        max_value = np.max(pop_fitness)
+        max_value_idx = np.argmax(pop_fitness)
+        self.best_pos = np.array(self.population[max_value_idx])
+        if max_value > self.best_fitness:
+            self.best_fitness = max_value
+        
+        print([round(x,4) for x in pop_fitness])
+        
+        return pop_fitness
+
+# ga_instance = pygad.GA(num_generations=1000,
+#                         num_parents_mating=2,
+#                         sol_per_pop=8,
+#                         num_genes=desAtomNo,
+#                         fitness_func=fitness_function,
+
+#                         init_range_low=0,
+#                         init_range_high=2,
+
+#                         random_mutation_min_val=0,
+#                         random_mutation_max_val=2,
+
+#                         mutation_by_replacement=True,
+#                         parent_selection_type="tournament",
+#                         crossover_type="single_point",
+
+#                         gene_type=int,
+#                         )
+
+# ga_instance.run()
+
+# solution, solution_fitness, _ = ga_instance.best_solution(ga_instance.last_generation_fitness)
+# print("Parameters of the best solution : {solution}".format(solution=solution))
+# print("Fitness value of the best solution = {solution_fitness}".format(solution_fitness=  solution_fitness))
+# pos = np.array(solution)
+# print('optimal edges to cut: ', optimize.convert_bvector_edges(pos, feasible_edges))
+start_time = time.time()
+ga_instance = PooledGA(num_generations=1000,
+                        num_parents_mating=2,
+                        sol_per_pop=8,
+                        num_genes=desAtomNo,
+                        fitness_func=fitness_function,
+
+                        init_range_low=0,
+                        init_range_high=2,
+
+                        random_mutation_min_val=0,
+                        random_mutation_max_val=2,
+
+                        mutation_by_replacement=True,
+                        parent_selection_type="tournament",
+                        crossover_type="single_point",
+
+                        gene_type=int)
+
+with Pool(processes=10) as pool:
+    ga_instance.run()
+
+    # solution, solution_fitness, solution_idx = ga_instance.best_solution()
+    print("Parameters of the best solution : {solution}".format(solution=ga_instance.best_pos))
+    print("Fitness value of the best solution = {solution_fitness}".format(solution_fitness=-1 * ga_instance.best_fitness))
+    # pos = np.array(solution)
+    print('optimal edges to cut: ', optimize.convert_bvector_edges(ga_instance.best_pos, feasible_edges))
+    print("--- %s seconds ---" % (time.time() - start_time))
+pos = ga_instance.best_pos
 # peff = calculate_penalty.peff_penalty(G, optimize.convert_bvector_edges(pos, feasible_edges), E)
 # print('mbe2 original', peff)
-
+# t8 = time.process_time()
+# peffog = calculate_penalty.peff_penalty(G,  optimize.convert_bvector_edges(pos, feasible_edges), E)
+# print('\t', time.process_time() - t8)
+# t9 = time.process_time()
+# peff3 = calculate_penalty.peff_penalty3(G,  optimize.convert_bvector_edges(pos, feasible_edges), E, prmDict)
+# print('\t', time.process_time() - t9)
+# t10 = time.process_time()
+# peff4 = calculate_penalty.peff_penalty4(G,  optimize.convert_bvector_edges(pos, feasible_edges), prmDict)
+# print('\t', time.process_time() - t10)
 # peff2 = calculate_penalty.peff_penalty3(G,optimize.convert_bvector_edges(pos, feasible_edges), E, prmDict)
 # print('mbe2 effective', peff2)
 

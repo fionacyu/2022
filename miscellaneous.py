@@ -17,6 +17,13 @@ import time
 def flatten(t):
     return [item for sublist in t for item in sublist]
 
+def pairs(*lists):
+    for t in combinations(lists, 2):
+        for pair in product(*t):
+            #Don't output pairs containing duplicated elements 
+            if pair[0] != pair[1]:
+                yield pair
+
 def find_conjugated_system(conjugated_edges, edge): # returns a list of lists of the edges of a conjugated system that the input edge is part of
     edges_lol = [x for x in conjugated_edges if edge in x or edge[::-1] in x]
     if len(edges_lol) == 1:

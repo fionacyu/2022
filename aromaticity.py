@@ -35,7 +35,7 @@ def get_as_from_edge(small_aromatic_cycles, edge): # returns list of list
 
 def check_aromaticity(graph, conjugated_edges, coordinates, cycleDict): # returns list of lists of edges in an aromatic system, len(return[output]) = no. of aromatic systems there are
     if len(cycleDict) == 0:
-        return []
+        return [], graph
     else:
         small_aromatic_cycles = []
         cycle_keys = [k for k in cycleDict]

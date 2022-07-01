@@ -1,6 +1,7 @@
 import math
 from itertools import combinations
 from itertools import product
+from attr import frozen
 import numpy as np 
 from numpy import linalg
 from scipy import misc
@@ -56,6 +57,10 @@ def bond_order(graph, node1, node2):
         
 
 def bond_distance(prmDict, graph, node1, node2):
+    # print(node1, node2)
+    # print('\t', graph.nodes[node1]['element'], graph.nodes[node2]['element'])
+    # print('\t', graph.nodes[node1]['ed'], graph.nodes[node2]['ed'])
+    # print('\t', graph.nodes[node1]['charge'], graph.nodes[node2]['charge'])
     ri, rj = prmDict[graph.nodes[node1]['at']].r1, prmDict[graph.nodes[node2]['at']].r1
     chiI, chiJ = prmDict[graph.nodes[node1]['at']].Xi, prmDict[graph.nodes[node2]['at']].Xi
     bondorder = bond_order(graph, node1, node2)
@@ -231,6 +236,31 @@ def angleE_edge(graph, edgeList, prmDict):
                 energy += angleE(graph, node2, node1, n2, prmDict)
     return energy
 
+def angleE_edge2(graph, edgeList, prmDict, angList):
+    energy = 0.0
+    for edge in edgeList:
+        node1, node2 = edge[0], edge[1]
+        n1neigh = list(graph.neighbors(node1))
+        n1neigh.remove(node2)
+        n2neigh = list(graph.neighbors(node2))
+        n2neigh.remove(node1)
+
+        if n1neigh:
+            for n1 in n1neigh:
+                if frozenset([node1, node2, n1]) in angList:
+                    continue
+                else:
+                    angList.add(frozenset([node1, node2, n1]))
+                    energy += angleE(graph, node1, node2, n1, prmDict)
+        
+        if n2neigh:
+            for n2 in n2neigh:
+                if frozenset([node2, node1, n2]) in angList:
+                    continue
+                else:
+                    angList.add(frozenset([node2, node1, n2]))
+                    energy += angleE(graph, node2, node1, n2, prmDict)
+    return energy
 
 
 def torsional_energy(graph, prmDict):
@@ -335,35 +365,38 @@ def torsional_energy(graph, prmDict):
     return energy
 
 def torE(graph, nodea, nodeb, nodec, noded, prmDict):
+    # print(nodeb, nodec)
+    # print('\t', graph.nodes[nodeb]['ed'], graph.nodes[nodec]['ed'])
+    # print('\t', graph.nodes[nodeb]['element'], graph.nodes[nodec]['element'])
     if graph.nodes[nodeb]['ed'] == 4 and graph.nodes[nodec]['ed'] == 4: # two sp3 centers
-            phi0 = 60.0
-            n = 3
-            vi, vj = prmDict[graph.nodes[nodeb]['at']].Vi, prmDict[graph.nodes[nodec]['at']].Vi
+        phi0 = 60.0
+        n = 3
+        vi, vj = prmDict[graph.nodes[nodeb]['at']].Vi, prmDict[graph.nodes[nodec]['at']].Vi
 
-            if load_data.get_valence(graph.nodes[nodeb]['element']) == 6: 
-                # exception when both atoms are group 16
+        if load_data.get_valence(graph.nodes[nodeb]['element']) == 6: 
+            # exception when both atoms are group 16
 
-                # atom b:
-                if graph.nodes[nodeb]['element'] == 'O':
-                    vi = 2.0
-                    n = 2
-                    phi0 = 90
-                elif graph.nodes[nodeb]['element'] == 'S':
-                    vi = 6.8
-                    n = 2
-                    phi0 = 90
+            # atom b:
+            if graph.nodes[nodeb]['element'] == 'O':
+                vi = 2.0
+                n = 2
+                phi0 = 90
+            elif graph.nodes[nodeb]['element'] == 'S':
+                vi = 6.8
+                n = 2
+                phi0 = 90
 
-            if load_data.get_valence(graph.nodes[nodec]['element']) == 6:
-                # atom c
-                if graph.nodes[nodec]['element'] == 'O':
-                    vj = 2.0
-                    n = 2
-                    phi0 = 90
-                elif graph.nodes[nodec]['element'] == 'S':
-                    vj = 6.8
-                    n = 2
-                    phi0 = 90
-            V = 0.5 * KCAL_TO_KJ * math.sqrt(vi * vj)
+        if load_data.get_valence(graph.nodes[nodec]['element']) == 6:
+            # atom c
+            if graph.nodes[nodec]['element'] == 'O':
+                vj = 2.0
+                n = 2
+                phi0 = 90
+            elif graph.nodes[nodec]['element'] == 'S':
+                vj = 6.8
+                n = 2
+                phi0 = 90
+        V = 0.5 * KCAL_TO_KJ * math.sqrt(vi * vj)
 
     elif graph.nodes[nodeb]['ed'] == 3 and graph.nodes[nodec]['ed'] == 3: # two sp2 centers
         phi0 = 180.0
@@ -386,6 +419,10 @@ def torE(graph, nodea, nodeb, nodec, noded, prmDict):
                 phi0 = 90
 
         V = 0.5 * KCAL_TO_KJ * 1.0
+    
+    else:
+        return 0
+
     vba = np.array(graph.nodes[nodea]['coord']) - np.array(graph.nodes[nodeb]['coord'])
     vcb = np.array(graph.nodes[nodeb]['coord']) - np.array(graph.nodes[nodec]['coord'])
     vdc = np.array(graph.nodes[nodec]['coord']) - np.array(graph.nodes[noded]['coord'])
@@ -460,6 +497,68 @@ def torE_edge(graph, edgeList, prmDict):
     
     return energy
     
+
+
+def torE_edge2(graph, edgeList, prmDict, torList):
+    energy = 0.0
+    for edge in edgeList:
+        # torsional: bond ab is connectd to bond cd by bond bc 
+        # consider three cases: 1. edge is bond bc, 2. edge is bond ab, 3. edge is cd
+
+        node1, node2 = edge[0], edge[1]
+        # case 1:
+        n1neigh = list(graph.neighbors(node1))
+        n1neigh.remove(node2)
+        n2neigh = list(graph.neighbors(node2))
+        n2neigh.remove(node1)
+
+        if n1neigh and n2neigh:
+            pairList = product(n1neigh, n2neigh)
+            pairList = [x for x in pairList if x[0] != x[1]] # cases like cyclopropane
+            for pair in pairList:
+                nodea = pair[0]
+                nodeb = node1
+                nodec = node2
+                noded = pair[1]
+                if frozenset([nodea, nodeb, nodec, noded]) in torList:
+                    continue
+                else:
+                    torList.add(frozenset([nodea, nodeb, nodec, noded]))
+                    energy += torE(graph, nodea, nodeb, nodec, noded, prmDict)
+        
+        # case 2:
+        if n2neigh:
+            nodea = node1
+            nodeb = node2
+            for n2 in n2neigh:
+                nodec = n2
+                ncneigh = list(graph.neighbors(nodec))
+                ncneigh = [x for x in ncneigh if x not in edge] # cases like cyclopropane
+                for nc in ncneigh:
+                    noded = nc
+                    if frozenset([nodea, nodeb, nodec, noded]) in torList:
+                        continue
+                    else:
+                        torList.add(frozenset([nodea, nodeb, nodec, noded]))
+                        energy += torE(graph, nodea, nodeb, nodec, noded, prmDict)
+        
+        # case 3:
+        if n1neigh:
+            noded = node2
+            nodec = node1
+            for n1 in n1neigh:
+                nodeb = n1
+                nbneigh = list(graph.neighbors(nodeb))
+                nbneigh = [x for x in nbneigh if x not in edge] # cases like cyclopropane
+                for nb in nbneigh:
+                    nodea = nb
+                    if frozenset([nodea, nodeb, nodec, noded]) in torList:
+                        continue
+                    else:
+                        torList.add(frozenset([nodea, nodeb, nodec, noded]))
+                        energy += torE(graph, nodea, nodeb, nodec, noded, prmDict)
+    
+    return energy
 
 def vdw_energy(graph, prmDict):
     energy = 0.0
@@ -694,6 +793,184 @@ def mbe2_eff(monFrags, monHcaps, jdimerFrags, jdHcaps, jdimerEdges, prmDict):
     
     # print( round((monEnergy + ddimerEnergy + jdimerEnergy), 4))
     return round((monEnergy + ddimerEnergy + jdimerEnergy), 4)
+
+
+def peff_mbe2(graph, edges_to_cut_list, monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges, prmDict):
+    # the penalty is equal to E - E(MBE2)
+    # E is the energy of the entire molecule, and E(MBE2) = \sum_i E_i + \sum_ij (E_ij - E_i - E_j)
+    # penalty is calculated in two parts: 1. E - \sum_i E_i 2. \sum_ij (E_ij - E_i - E_j)
+    # then subtract 2. from 1. and the penalty is given 
+
+    monKeys = list(monFrags)
+
+    # part 1.: monomers
+    # the original molecule: bonding terms only
+    Eog = 0.0
+    angList, torList = set(), set()
+    Eogbond = bond_edges(graph, edges_to_cut_list, prmDict)
+    Eog += Eogbond
+    Eogangle = angleE_edge2(graph, edges_to_cut_list, prmDict, angList)
+    Eog += Eogangle
+    Eogtor = torE_edge2(graph, edges_to_cut_list, prmDict, torList)
+    Eog += Eogtor
+
+    # the monomers: bonding terms only (only need to account for the hydrogen caps)
+    Emon = 0.0
+    EIvdw = 0.0
+    # Embond, Emang, Emtor = 0.0, 0.0, 0.0
+    nonHcapnodes = []
+    for k in monKeys:
+        angList2, torList2 = set(), set()
+        hcaps = set(monFrags[k].nodes) - set(graph.nodes)
+        nonHcaps = list(set(monFrags[k].nodes) - hcaps)
+        nonHcapnodes.append(nonHcaps)
+        hedgeList = [e for e in monFrags[k].edges if any([e[0] in hcaps, e[1] in hcaps])]
+        Emon += bond_edges(monFrags[k], hedgeList, prmDict)
+        # Embond += bond_edges(monFrags[k], hedgeList, prmDict)
+        Emon += angleE_edge2(monFrags[k], hedgeList, prmDict, angList2)
+        # Emang += angleE_edge2(monFrags[k], hedgeList, prmDict, angList2)
+        Emon += torE_edge2(monFrags[k], hedgeList, prmDict, torList2) 
+        # Emtor += torE_edge2(monFrags[k], hedgeList, prmDict, torList2) 
+
+        IHpairs = list(product(nonHcaps, hcaps)) + list(combinations(hcaps, 2))
+        mondict = {n: set(monFrags[k].neighbors(n)) for n in monFrags[k].nodes}
+        IHpairs = [x for x in IHpairs if miscellaneous.shortest_path_length(mondict, x[0], x[1])[1] >= 3]
+        EIvdw += vdw_pair(monFrags[k], IHpairs, prmDict)
+    
+    # dealing with van der waals interactions
+    # deltavdw = E^vdw - \sum_i E_i^vdw
+    # deltavdw = interaction between pair of atoms on distinct fragments (excluding hydrogen caps) - \sum^Nfrags interactin of hydrogen caps to other atoms in the same fragment 
+
+    # pairs on distinct fragments:
+    IJpairs = list(miscellaneous.pairs(*nonHcapnodes))
+    gdict = {n: set(graph.neighbors(n)) for n in graph.nodes}
+    IJpairs = [x for x in IJpairs if miscellaneous.shortest_path_length(gdict, x[0], x[1])[1] >= 3 ]
+    EIJvdw = vdw_pair(graph, IJpairs, prmDict)
+
+    deltavdw = EIJvdw - EIvdw 
+    deltaEmon = (Eog - Emon) + deltavdw
+    print('\t', 'deltabond', (Eog - Emon))
+    # print('\t', 'deltabond', (Eogbond - Embond))
+    # print('\t', 'deltaangle', (Eogangle - Emang))
+    # print('\t', 'deltator', (Eogtor - Emtor))
+    print('\t', 'deltavdw', deltavdw)
+
+    monPairs = combinations(monKeys, 2)
+    ddList = []
+    for pair in monPairs:
+        if "%s_%s" % (pair[0], pair[1]) in jdimerFrags or "%s_%s" % (pair[1], pair[0]) in jdimerFrags:
+            continue
+        else:
+            ddList.append("%s_%s" % (pair[0], pair[1]))
+
+    # sum of disjoint dimer interaction energies
+    ddimerEnergy = 0.0
+    # pair of atoms on separate fragments
+    for dd in ddList:
+        mon1, mon2 = dimer_comp(dd)
+        datomPairs = list(product(list(monFrags[mon1].nodes), list(monFrags[mon2].nodes)))
+        ddg =  nx.compose(monFrags[mon1],monFrags[mon2])
+        # print(dd, vdw_pair(ddg, datomPairs, prmDict))
+        ddimerEnergy += vdw_pair(ddg, datomPairs, prmDict)
+    
+    jdimerEnergy = 0.0 
+    for jd in list(jdimerFrags):
+        # print(jd)
+        mon1, mon2 = dimer_comp(jd)
+        edgeList = jdimerEdges[jd] # bonds belonging on the original graph that were broken
+        # print("\t", 'edgeList', edgeList)
+        jdg = jdimerFrags[jd]
+        bondE = bond_edges(jdg, edgeList, prmDict)
+
+        angE = angleE_edge(jdg, edgeList, prmDict)
+
+        torE = torE_edge(jdg, edgeList, prmDict)
+
+        # hcapsM = (set(monFrags[mon1].nodes) | set(monFrags[mon2].nodes)) - set(jdg.nodes)
+        monBondE = 0.0
+        hcapList, nonHnodes = [], []
+        nonHnodes2 = []
+        sbond, sangle, stor = 0.0, 0.0, 0.0
+        monjdH  = (set(monFrags[mon1].nodes) | set(monFrags[mon2].nodes)) - set(jdg.nodes)
+        # print('\t', 'monjdH', monjdH)
+        jdmonH = set(jdg.nodes) - (set(monFrags[mon1].nodes) | set(monFrags[mon2].nodes))
+        # print('\t', 'jdmonH', jdmonH)
+        mon2g = nx.compose(monFrags[mon1], monFrags[mon2])
+        sameH = set()
+        hmonjd = {}
+        for h in [i for i in monjdH]:
+            blist = [np.array_equal(np.array(mon2g.nodes[h]['coord']), np.array(jdg.nodes[x]['coord'])) for x in jdmonH]
+            if any(blist):
+                monjdH.remove(h)
+                
+                bidx = np.where(blist)[0]
+                sameH.add(list(jdmonH)[bidx[0]])
+                hmonjd[h] = list(jdmonH)[bidx[0]]
+
+        # print('\t', 'relevant hcaps', monjdH)
+        # print('\t', 'sameH', sameH)
+        relevant_hcaps = monjdH
+        for _mon in [mon1, mon2]:
+            # hcaps = set(monFrags[_mon].nodes) - set(jdg.nodes)
+            hcaps = relevant_hcaps & set(monFrags[_mon].nodes)
+            # print("\t", hcaps)
+            hcapList.append(list(hcaps))
+            nonHnodes.append(list(set(monFrags[_mon].nodes) - set(hcaps)))
+
+            _nonHnodes2 = []
+            for x in list(set(monFrags[_mon].nodes) - set(hcaps)):
+                if x in hmonjd:
+                    _nonHnodes2.append(hmonjd[x])
+                else:
+                    _nonHnodes2.append(x)
+            nonHnodes2.append(_nonHnodes2)
+
+            hedgeList = [e for e in monFrags[_mon].edges if any([e[0] in hcaps, e[1] in hcaps]) and any([e[0] in miscellaneous.flatten(edgeList), e[1] in miscellaneous.flatten(edgeList)])]
+            bondEM = bond_edges(monFrags[_mon], hedgeList, prmDict)
+            sbond += bondEM
+            monBondE += bondEM
+            angEM = angleE_edge(monFrags[_mon], hedgeList, prmDict)
+            monBondE += angEM
+            sangle += angEM
+            torEM = torE_edge(monFrags[_mon], hedgeList, prmDict)
+            monBondE += torEM
+            stor += torEM
+        
+        deltaBondE = bondE + angE + torE - monBondE
+        
+        # print('\t', 'deltabond', bondE - sbond)
+        # print('\t', 'deltaangle', angE - sangle)
+        # print('\t', 'deltator', torE - stor)
+        # jdimerEnergy += deltaBondE
+
+
+        ijpairs = product(nonHnodes2[0], nonHnodes2[1])
+        jdgdict = {n: set(jdg.neighbors(n)) for n in jdg.nodes}
+        ijpairs = [x for x in ijpairs if miscellaneous.shortest_path_length(jdgdict, x[0], x[1])[1] >= 3 ]
+        Eijvdw = vdw_pair(jdg, ijpairs, prmDict)
+        
+        iHpairs = product(nonHnodes[0], hcapList[0])
+        # iHpairs = list(iHpairs) + list(combinations(hcapList[0], 2))
+        gdict1 = {n: set(monFrags[mon1].neighbors(n)) for n in monFrags[mon1].nodes}
+        iHpairs = [x for x in iHpairs if miscellaneous.shortest_path_length(gdict1, x[0], x[1])[1] >= 3]
+        
+        Eivdw = vdw_pair(monFrags[mon1], iHpairs, prmDict)
+
+        jHpairs = product(nonHnodes[1], hcapList[1])
+        # jHpairs = list(jHpairs) + list(combinations(hcapList[1], 2))
+        gdict2 = {n: set(monFrags[mon2].neighbors(n)) for n in monFrags[mon2].nodes}
+        jHpairs = [x for x in jHpairs if miscellaneous.shortest_path_length(gdict2, x[0], x[1])[1] >= 3]
+        
+        Ejvdw = vdw_pair(monFrags[mon2], jHpairs, prmDict)
+
+        deltaVDW = Eijvdw - Eivdw - Ejvdw
+        # print('\t', 'Eijvdw', Eijvdw)
+        # print('\t', 'Eivdw', Eivdw)
+        # print('\t', 'Ejvdw', Ejvdw)
+        # print('\t', 'deltavdw', deltaVDW)
+        jdimerEnergy += (deltaBondE + deltaVDW)
+    return round((deltaEmon - ddimerEnergy - jdimerEnergy), 4)
+
 
 # oop bending not used 
 # def oop_energy(graph): # out of plane bending energy
