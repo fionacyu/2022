@@ -5,6 +5,7 @@ import collections
 import multiprocessing as mp
 
 def get_feasible_edges(graph): # edges that do not include hydrogen 
+    dangAtoms = {'H', 'F', 'Cl', 'Br', 'I'} # these are common atoms that only form one bond, it would be illogical to cut these bonds as we'd be left with one single atom
     return [e for e in graph.edges if graph.nodes[e[0]]['element'] != 'H' and graph.nodes[e[1]]['element'] != 'H' and graph[e[0]][e[1]]['bo'] == 1]
 
 def convert_bvector_edges(bvector, feasible_edges):

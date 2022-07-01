@@ -168,6 +168,7 @@ betalist = [1,1,1,1,1,1]
 # print('total penalty time', time.process_time() - t8)
 
 feasible_edges = optimize.get_feasible_edges(G)
+print('feasible_edges: ', feasible_edges)
 print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', "a"))
 
 # mbe2wcs = calculate_penalty.peff_wcs(G, feasible_edges, E)
@@ -203,9 +204,10 @@ class PooledGA(pygad.GA):
         pop_fitness = np.array(pop_fitness)
         max_value = np.max(pop_fitness)
         max_value_idx = np.argmax(pop_fitness)
-        self.best_pos = np.array(self.population[max_value_idx])
+        
         if max_value > self.best_fitness:
             self.best_fitness = max_value
+            self.best_pos = np.array(self.population[max_value_idx])
         
         print([round(x,4) for x in pop_fitness])
         
