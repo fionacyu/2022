@@ -59,6 +59,11 @@ def read_xyz(xyzFile, chargefile=False):
     # print(nodeList)
     return atoms, coordinates, nodeList
 
+def xyz_to_str(xyzpath):
+    with open(xyzpath, 'r+') as f:
+        data = f.read()
+    return data
+
 def EDM(A,B):
     # taken from https://medium.com/swlh/euclidean-distance-matrix-4c3e1378d87f
     p1 = np.sum(A**2, axis=1)[:, np.newaxis]

@@ -18,6 +18,7 @@ import os
 import json
 import sys
 import pygad
+import peff
 from multiprocessing import Pool
 mp.set_start_method('fork')
 
@@ -46,7 +47,7 @@ else:
     atoms, coordinates, nodeList = load_data.read_xyz(xyzFile, chargefile)
 
 print('atom no: ', len(atoms))
-
+xyz_str = load_data.xyz_to_str(xyzFile)
 
 if len(atoms) <= desAtomNo:
     print('Number of atoms in system is less than or equal to fragSize. Please consider leaving the system as one fragment or reducing fragSize.')
@@ -157,7 +158,8 @@ edges_to_cut_list = [e for i, e in enumerate(nonHedges) if binaryList[i] == 1]
 
 prmDict = load_data.read_prm()
 t11 = time.process_time()
-E = uff.total_energy(G)
+# E = uff.total_energy(G)
+E = peff.molecule_energy(xyz_str)
 print('E time', time.process_time() - t11)
 # peff_penalty = calculate_penalty.peff_penalty3(G, edges_to_cut_list, E, prmDict)
 # print('peff_penalty3', peff_penalty)
@@ -262,11 +264,17 @@ with Pool(processes=10) as pool:
     ga_instance.run()
 
     # solution, solution_fitness, solution_idx = ga_instance.best_solution()
+    print ('------------------------------------', file=open('report.log', 'a'))
     print("Parameters of the best solution : {solution}".format(solution=ga_instance.best_pos))
+    print("Parameters of the best solution : {solution}".format(solution=ga_instance.best_pos), file=open('report.log', 'a'))
     print("Fitness value of the best solution = {solution_fitness}".format(solution_fitness=-1 * ga_instance.best_fitness))
+    print("Fitness value of the best solution = {solution_fitness}".format(solution_fitness=-1 * ga_instance.best_fitness), file=open('report.log', 'a'))
     # pos = np.array(solution)
     print('optimal edges to cut: ', optimize.convert_bvector_edges(ga_instance.best_pos, feasible_edges))
+    print('optimal edges to cut: ', optimize.convert_bvector_edges(ga_instance.best_pos, feasible_edges), file=open('report.log', 'a'))
     print("--- %s seconds ---" % (time.time() - start_time))
+    print("--- %s seconds ---" % (time.time() - start_time), file=open('report.log', 'a'))
+    print ('------------------------------------', file=open('report.log', 'a'))
 pos = ga_instance.best_pos
 # peff = calculate_penalty.peff_penalty(G, optimize.convert_bvector_edges(pos, feasible_edges), E)
 # print('mbe2 original', peff)
