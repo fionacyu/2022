@@ -1,6 +1,8 @@
 from openbabel import pybel
 from openbabel import openbabel
 
+pybel.ob.obErrorLog.SetOutputLevel(0)
+
 def molecule_energy(xyz_str):
     mol = pybel.readstring('xyz', xyz_str)
     ff = openbabel.OBForceField.FindForceField("uff")

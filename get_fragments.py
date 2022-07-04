@@ -170,7 +170,7 @@ betalist = [1,1,1,1,1,1]
 # print('total penalty time', time.process_time() - t8)
 
 feasible_edges = optimize.get_feasible_edges(G)
-print('feasible_edges: ', feasible_edges)
+# print('feasible_edges: ', feasible_edges)
 print('\n'.join(str(i) for i in feasible_edges), file=open('feasibleEdges.dat', "a"))
 
 # mbe2wcs = calculate_penalty.peff_wcs(G, feasible_edges, E)
