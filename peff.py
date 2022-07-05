@@ -10,7 +10,6 @@ def molecule_energy(xyz_str):
     return ff.Energy()
 
 def conv_graph_xyzstr(graph, comment=''):
-    # atoms = len(graph.nodes)
     symbols = [graph.nodes[x]['element'] for x in graph.nodes]
     coords = [graph.nodes[x]['coord'] for x in graph.nodes]
     cblock = ['{0}  {1[0]: .10f}  {1[1]: .10f}  {1[2]: .10f}'.format(s, c) for s, c in zip(symbols, coords)]

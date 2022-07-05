@@ -315,9 +315,6 @@ def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDic
     return penalty_list
 
 def full_penalty_ga(x, atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict):
-    # for node in list(graph.nodes):
-    #     print(node, graph.nodes[node])
-    # print('\n')
     penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), peff_penalty5(graph, edges_to_cut_list, E, prmDict), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
     print(' '.join(str(j) for j in x),file=open('positions.dat', "a"))

@@ -247,7 +247,7 @@ def get_fragments_sg(graph, optimal_edges_to_cut, idcount):
         
         count += 1
     
-    return symbolList, coordList, idList, hfragDict, fragNodes, count
+    return symbolList, coordList, idList, hfragDict, fragNodes, count-1
 
 def peff_hfrags(graph, edges_to_cut_list):
     # print(edges_to_cut_list)
@@ -260,6 +260,8 @@ def peff_hfrags(graph, edges_to_cut_list):
     connectedComp = (fgraph.subgraph(x) for x in nx.connected_components(fgraph))
     # ncount = len(list(graph.nodes))
     ncount = max(graph.nodes)
+    cutedge_monid = {}
+    monid_cutedge = {}
     # print('ncount', ncount)
     for i, sg in enumerate(connectedComp):
         sg1 = sg.copy()
@@ -269,6 +271,8 @@ def peff_hfrags(graph, edges_to_cut_list):
         # fragNodes[i+1] = [x for x in cc]
 
         nodes_affected = set(flatten(edges_to_cut_list)).intersection(cc) 
+        cutedge_monid.update(dict.fromkeys(list(nodes_affected), i+1))
+        monid_cutedge[i+1] = list(nodes_affected)
         edges_cut = [e for e in edges_to_cut_list if any([e[0] in nodes_affected, e[1] in nodes_affected])] # gets the edges that were cut to make the fragment
 
         # print('edges_cut', edges_cut)
@@ -306,96 +310,52 @@ def peff_hfrags(graph, edges_to_cut_list):
             
         monFrags['%d' % (i+1)] = sg1
         monHcaps['%d' % (i+1)] = len(list(sg1.nodes)) - len(cc)
-
-    # for monomer in monFrags:
-    #     print('monomer', monomer)
-    #     print(set(monFrags[monomer].nodes))
-
-    count = len([x for x in nx.connected_components(fgraph)]) + 1
-    monids = range(1,count)
-    monpairs = [x for x in combinations(monids, 2)]
     existing_pairs = []
+    # print('edges_to_cut_list', edges_to_cut_list)
     for e in edges_to_cut_list: # dimers
-        # print('edge', e)
-        nodes = nx.node_connected_component(fgraph, e[0]) | nx.node_connected_component(fgraph, e[1])
-        hcaps = 0
-        status = 0
-        for pair in monpairs:
-            # mon1nodes, mon2nodes = [x for x in monFrags[str(pair[0])].nodes if x <= len(list(graph.nodes))], [x for x in monFrags[str(pair[1])].nodes if x <= len(list(graph.nodes))]
-            mon1nodes, mon2nodes = [x for x in monFrags[str(pair[0])].nodes if x <= max(graph.nodes)], [x for x in monFrags[str(pair[1])].nodes if x <= max(graph.nodes)]
-            # print('mon nodes', set(mon1nodes) | set(mon2nodes))
-            # print('dimer nodes', set(nodes))
-            if (set(mon1nodes) | set(mon2nodes)).issubset(set(nodes)):
+        ##############
+        node1, node2 = e[0], e[1]
+        mon1, mon2 = cutedge_monid[node1], cutedge_monid[node2]
+        # nodes = nx.node_connected_component(fgraph, e[0]) | nx.node_connected_component(fgraph, e[1])
+        hcaps = 0 
+        if mon1 != mon2:
+            monpair = tuple(sorted([mon1, mon2]))
+            if monpair not in existing_pairs:
+                existing_pairs.append(monpair) 
+                mon1nodes, mon2nodes = [x for x in monFrags[str(monpair[0])].nodes if x <= max(graph.nodes)], [x for x in monFrags[str(monpair[1])].nodes if x <= max(graph.nodes)]
+                mon1graph, mon2graph = monFrags[str(monpair[0])].copy(), monFrags[str(monpair[1])].copy()
+                mon1graph.remove_nodes_from(list(set(mon1graph.nodes) - set(mon1nodes)))
+                mon2graph.remove_nodes_from(list(set(mon2graph.nodes) - set(mon2nodes)))
+                jdimer = nx.compose(mon1graph, mon2graph)
+                jdimer.add_edge(e[0], e[1], **{'bo': graph[e[0]][e[1]]['bo'], 'r': linalg.norm(np.array(graph.nodes[e[0]]['coord']) - np.array(graph.nodes[e[1]]['coord']))})
 
-                if pair not in existing_pairs:
-                    mon1, mon2 = pair[0], pair[1]
-                    pairs = sorted([mon1, mon2])
+                nodes_affected = monid_cutedge[mon1] + monid_cutedge[mon2]
+                for node_cut in nodes_affected:
+                    nc_el = graph.nodes[node_cut]['element']
+                    if nc_el == 'C':
+                        nc_el = 'C' + str(graph.degree[node_cut])
+                    neighbourList = list(graph.neighbors(node_cut))
+                    neighbourList = list(set(neighbourList) - set(jdimer.nodes))# [x for x in neighbourList if x not in set(jdimer.nodes)]
                     
-                    status = 1
-                    # print('jdimer :', mon1, mon2)
-                    mon1graph, mon2graph = monFrags[str(pair[0])].copy(), monFrags[str(pair[1])].copy()
-                    mon1graph.remove_nodes_from(list(set(mon1graph.nodes) - set(mon1nodes)))
-                    mon2graph.remove_nodes_from(list(set(mon2graph.nodes) - set(mon2nodes)))
-                    jdimer = nx.compose(mon1graph, mon2graph)
-                    jdimer.add_edge(e[0], e[1], **{'bo': graph[e[0]][e[1]]['bo'], 'r': linalg.norm(np.array(graph.nodes[e[0]]['coord']) - np.array(graph.nodes[e[1]]['coord']))})
-                    jdimerEdges['%d_%d' % (pairs[0], pairs[1])] = [e]
-                    existing_pairs.append(pair)
+                    # the nodes in neighbourList will be replaced with hydrogen caps 
+                    neighElements = [graph.nodes[x]['element'] if graph.nodes[x]['element'] != 'C' else 'C' + str(graph.degree[x]) for x in neighbourList]
+                    # print(neighElements)
+                    neighScalar = [(load_data.get_covradii('H') + load_data.get_covradii(nc_el)) / (load_data.get_covradii(x) + load_data.get_covradii(nc_el)) for x in neighElements]
+                    neighHcoords = [list(np.array(graph.nodes[node_cut]['coord']) + neighScalar[j] * (np.array(graph.nodes[neighbourList[j]]['coord']) - np.array(graph.nodes[node_cut]['coord']))) for j in range(len(neighbourList))]
+                    hcaps += len(neighbourList)
 
-                    nodes_affected = set(flatten(edges_to_cut_list)).intersection(nodes) 
-                    edges_cut = [e for e in edges_to_cut_list if any([e[0] in nodes_affected, e[1] in nodes_affected])]
-                    edges_cut.remove(e)
-                    for edg in edges_cut:
-                        try:
-                            nodeh = min(set(edg) - set(nodes))  # this node will be replaced with hydrogen
-                            othernode = min(set(edg).intersection(nodes))
-
-                            nodehel = graph.nodes[nodeh]['element']
-                            othernodeel = graph.nodes[othernode]['element']
-
-                            if nodehel == 'C':
-                                degree = graph.degree[nodeh]
-                                nodehel = 'C' + str(degree)
-                            
-                            if othernodeel == 'C':
-                                degree = graph.degree[othernode]
-                                othernodeel = 'C' + str(degree)
-
-                            scalar = (load_data.get_covradii('H') + load_data.get_covradii(othernodeel)) / (load_data.get_covradii(nodehel) + load_data.get_covradii(othernodeel))
-                            # hcoords = list(np.array(coordinates[othernode -1]) + scalar * (np.array(coordinates[nodeh -1]) - np.array(coordinates[othernode-1])))
-                            hcoords = list(np.array(graph.nodes[othernode]['coord']) + scalar * (np.array(graph.nodes[nodeh]['coord']) - np.array(graph.nodes[othernode]['coord'])))
-                            # print('hcoords', hcoords)
-                            hcaps += 1
-                            ncount += 1
-
-                            jdimer.add_node(ncount,  **{"element": 'H', "charge": 0, "coord": hcoords, "ed":1, "at": 'H_'})
-                            # print(ncount)
-                            # print(ncount,  {"element": 'H', "coord": hcoords})
-                            jdimer.add_edge(ncount, othernode, **{'bo': 1, 'r': linalg.norm(np.array(hcoords) - np.array(graph.nodes[othernode]['coord']))})
-
-                        except ValueError:
-                            if frozenset(edg) != frozenset(e):
-                                # print(edg)
-                                jdimer.add_edge(edg[0], edg[1], **{'bo': graph[edg[0]][edg[1]]['bo'], 'r': linalg.norm(np.array(graph.nodes[edg[0]]['coord']) - np.array(graph.nodes[edg[1]]['coord']))})
-                                jdimerEdges['%d_%d' % (pairs[0], pairs[1])].append(edg)
-                                # add the other edge which was broken in order to yield the broken ring
-                            # continue 
-                break
+                    for k in range(len(neighbourList)):
+                        ncount +=1
+                        jdimer.add_node(ncount, **{"element": 'H', "charge": 0, "coord": neighHcoords[k], "ed":1, "at": 'H_'})
+                        jdimer.add_edge(ncount, node_cut, **{'bo': 1, 'r': linalg.norm(np.array(neighHcoords[k]) - np.array(graph.nodes[node_cut]['coord']))})
+                        
+                jdimerFrags['%d_%d' % (monpair[0], monpair[1])] = jdimer
+                jdimerHcaps['%d_%d' % (monpair[0], monpair[1])] = hcaps
             else:
-                continue
-        if status == 1: # otherwise we have a situation where cutting the bond does not lead to distinct monomers (occurs in ring systems)
-            pairs = sorted([mon1, mon2])
-        
-            # print(edges_to_cut_list)
-            # print('edge', e)
-            jdimerFrags['%d_%d' % (pairs[0], pairs[1])] = jdimer
-            jdimerHcaps['%d_%d' % (pairs[0], pairs[1])] = len(jdimer.nodes) - len(nodes)
+                jdimer1 = jdimerFrags['%d_%d' % (monpair[0], monpair[1])]
+                jdimer1.add_edge(e[0], e[1], **{'bo': graph[e[0]][e[1]]['bo'], 'r': linalg.norm(np.array(graph.nodes[e[0]]['coord']) - np.array(graph.nodes[e[1]]['coord']))})
+                jdimerFrags['%d_%d' % (monpair[0], monpair[1])] = jdimer1
 
-    # print('monHcaps', monHcaps)
-    # print('jdimerHcaps', jdimerHcaps)
-    # for jd in jdimerFrags:
-    #     for node in list(jdimerFrags[jd].nodes):
-    #         print(node, jdimerFrags[jd].nodes[node])
-    #     print('\n')
     return monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges
     
 def disjoint_dimers(monFrags, jdimerFrags):
@@ -509,6 +469,21 @@ def hyperconj_connections_para(graphDict, comb, donorDict, acceptorDict):
         return (comb, daConnection)
     else:
         return (comb, None)
+
+
+def check_brokenbonds(graph, optimal_edges_to_cut):
+    fgraph = graph.copy()
+    fgraph.remove_edges_from(optimal_edges_to_cut)
+    edgeList = optimal_edges_to_cut
+
+    for edges in optimal_edges_to_cut:
+        node1, node2 = edges[0], edges[1]
+        node1connected = set(nx.node_connected_component(fgraph, node1))
+        if node2 in node1connected:
+            edgeList.remove(edges)
+    
+    return edgeList
+
 
 # def hybridisation2_para(graph, node, proxMatrix, tol):
     
