@@ -216,6 +216,39 @@ def get_fragments(graph, optimal_edges_to_cut, coordinates):
 
     return symbolList, coordList, weightList, idList, hfragDict, fragNodes
 
+def get_fragments_sg(graph, optimal_edges_to_cut, idcount):
+    fgraph = graph.copy()
+    fgraph.remove_edges_from(optimal_edges_to_cut)
+
+    symbolList, coordList, idList = [], [], []
+    hfragDict = {}
+    fragNodes = {}
+
+    count = idcount
+    for i, cc in enumerate(nx.connected_components(fgraph)):
+        symbols = [graph.nodes[x]['element'] for x in cc]
+        coords = flatten([graph.nodes[x]['coord'] for x in cc])
+        fragids = [count] * len(cc)
+
+        symbolList.extend(symbols)
+        coordList.extend(coords)
+        idList.extend(fragids)
+
+        fragNodes[count] = [x for x in cc]
+
+        nodes_affected = set(flatten(optimal_edges_to_cut)).intersection(cc)
+        edges_cut = [e for e in optimal_edges_to_cut if any([e[0] in nodes_affected, e[1] in nodes_affected])]
+
+        for edge in edges_cut:
+            if edge not in hfragDict:
+                hfragDict[edge] = [count]
+            else:
+                hfragDict[edge].append(count)
+        
+        count += 1
+    
+    return symbolList, coordList, idList, hfragDict, fragNodes, count
+
 def peff_hfrags(graph, edges_to_cut_list):
     # print(edges_to_cut_list)
     fgraph = graph.copy()
@@ -225,7 +258,9 @@ def peff_hfrags(graph, edges_to_cut_list):
     monHcaps, jdimerHcaps = {}, {}
     jdimerEdges = {}
     connectedComp = (fgraph.subgraph(x) for x in nx.connected_components(fgraph))
-    ncount = len(list(graph.nodes))
+    # ncount = len(list(graph.nodes))
+    ncount = max(graph.nodes)
+    # print('ncount', ncount)
     for i, sg in enumerate(connectedComp):
         sg1 = sg.copy()
         # print('mon :', i+1)
@@ -286,7 +321,8 @@ def peff_hfrags(graph, edges_to_cut_list):
         hcaps = 0
         status = 0
         for pair in monpairs:
-            mon1nodes, mon2nodes = [x for x in monFrags[str(pair[0])].nodes if x <= len(list(graph.nodes))], [x for x in monFrags[str(pair[1])].nodes if x <= len(list(graph.nodes))]
+            # mon1nodes, mon2nodes = [x for x in monFrags[str(pair[0])].nodes if x <= len(list(graph.nodes))], [x for x in monFrags[str(pair[1])].nodes if x <= len(list(graph.nodes))]
+            mon1nodes, mon2nodes = [x for x in monFrags[str(pair[0])].nodes if x <= max(graph.nodes)], [x for x in monFrags[str(pair[1])].nodes if x <= max(graph.nodes)]
             # print('mon nodes', set(mon1nodes) | set(mon2nodes))
             # print('dimer nodes', set(nodes))
             if (set(mon1nodes) | set(mon2nodes)).issubset(set(nodes)):
@@ -332,11 +368,13 @@ def peff_hfrags(graph, edges_to_cut_list):
                             ncount += 1
 
                             jdimer.add_node(ncount,  **{"element": 'H', "charge": 0, "coord": hcoords, "ed":1, "at": 'H_'})
+                            # print(ncount)
                             # print(ncount,  {"element": 'H', "coord": hcoords})
                             jdimer.add_edge(ncount, othernode, **{'bo': 1, 'r': linalg.norm(np.array(hcoords) - np.array(graph.nodes[othernode]['coord']))})
 
                         except ValueError:
                             if frozenset(edg) != frozenset(e):
+                                # print(edg)
                                 jdimer.add_edge(edg[0], edg[1], **{'bo': graph[edg[0]][edg[1]]['bo'], 'r': linalg.norm(np.array(graph.nodes[edg[0]]['coord']) - np.array(graph.nodes[edg[1]]['coord']))})
                                 jdimerEdges['%d_%d' % (pairs[0], pairs[1])].append(edg)
                                 # add the other edge which was broken in order to yield the broken ring
@@ -354,6 +392,10 @@ def peff_hfrags(graph, edges_to_cut_list):
 
     # print('monHcaps', monHcaps)
     # print('jdimerHcaps', jdimerHcaps)
+    # for jd in jdimerFrags:
+    #     for node in list(jdimerFrags[jd].nodes):
+    #         print(node, jdimerFrags[jd].nodes[node])
+    #     print('\n')
     return monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges
     
 def disjoint_dimers(monFrags, jdimerFrags):
