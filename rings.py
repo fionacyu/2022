@@ -20,6 +20,7 @@ def _path_to_cycle(path):
     Returns a set of edges
     """
     edges = set()
+    # print('nx.utils.pairwise(path)', list(nx.utils.pairwise(path)))
     for edge in nx.utils.pairwise(path):
         # Toggle whether to keep the current edge.
         edges ^= {edge}
@@ -68,20 +69,27 @@ def _min_cycle(G, orth, weight=None):
     orthogonal to the vector orth as per [p. 338, 1]
     """
     enodes = set(miscellaneous.flatten([ list(nx.dfs_preorder_nodes(G, source=x, depth_limit=10) ) for x,_ in orth]) )
+    # print('enodes', enodes)
     uvedges = [e for e in G.edges if len(set(e).intersection(enodes)) > 0]
     # t2 = time.process_time()
     T = nx.Graph()
-
+    offset = min(G.nodes) - 1
+    
     nodes_idx = {node: idx for idx, node in enumerate(G.nodes())}
-    idx_nodes = {idx: node for node, idx in nodes_idx.items()}
+    idx_nodes = {idx + offset: node for node, idx in nodes_idx.items()}
 
     nnodes = len(nodes_idx)
-
+    # nnodes = max(G.nodes)
+    
+    # print('offset', offset)
     # Add 2 copies of each edge in G to T. If edge is in orth, add cross edge;
     # otherwise in-plane edge
-    edgeList =[[(nodes_idx[u], nnodes + nodes_idx[v]), (nnodes + nodes_idx[u], nodes_idx[v])] if frozenset((u, v)) in orth else [(nodes_idx[u], nodes_idx[v]), (nnodes + nodes_idx[u], nnodes + nodes_idx[v])] for u, v in uvedges] 
+    # edgeList =[[(nodes_idx[u], nnodes + nodes_idx[v]), (nnodes + nodes_idx[u], nodes_idx[v])] if frozenset((u, v)) in orth else [(nodes_idx[u], nodes_idx[v]), (nnodes + nodes_idx[u], nnodes + nodes_idx[v])] for u, v in uvedges] 
+    edgeList =[[(nodes_idx[u] + offset, nnodes + nodes_idx[v] + offset), (nnodes + nodes_idx[u] + offset, nodes_idx[v] + offset)] if frozenset((u, v)) in orth else [(nodes_idx[u] + offset, nodes_idx[v] + offset), (nnodes + nodes_idx[u] + offset, nnodes + nodes_idx[v] + offset)] for u, v in uvedges] 
     T.add_edges_from(miscellaneous.flatten(edgeList))
+    # print('edgeList', miscellaneous.flatten(edgeList))
     T = {n: set(T.neighbors(n)) for n in T.nodes}
+    # print('T', T)
     
     t1 = time.process_time()
     pool = mp.Pool(mp.cpu_count())
@@ -98,9 +106,11 @@ def _min_cycle(G, orth, weight=None):
     # print('min_path', min_path)
 
     # Now we obtain the actual path, re-map nodes in T to those in G
-    min_path_nodes = [node if node < nnodes else node - nnodes for node in min_path]
+    min_path_nodes = [node if node < offset + nnodes else node - nnodes for node in min_path]
+    # print('min_path_nodes', min_path_nodes)
     # Now remove the edges that occur two times
     mcycle_pruned = _path_to_cycle(min_path_nodes)
+    # print('mcycle_pruned', mcycle_pruned)
     # print('_min_cycle', time.process_time() - t2)
     # print('cycle_edges', {frozenset((idx_nodes[u], idx_nodes[v])) for u, v in mcycle_pruned})
     return {frozenset((idx_nodes[u], idx_nodes[v])) for u, v in mcycle_pruned}
@@ -127,7 +137,7 @@ def _min_cycle_basis(comp, weight):
         # t = time.process_time()
         # print('set_orth[k]', set_orth[k])
         new_cycle = _min_cycle(comp, set_orth[k], weight=weight)
-        # print('_min_cycle', time.process_time() - t)
+        # print('new_cycle', new_cycle)
         # print('list(set().union(*new_cycle))', [tuple(list(x)) for x in new_cycle])
         cb.append([tuple(list(x)) for x in new_cycle])
         # now update set_orth so that k+1,k+2... th elements are
