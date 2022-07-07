@@ -289,9 +289,17 @@ def peff_penalty4(graph, edges_to_cut_list, prmDict):
     return round(penalty, 4)
 
 def peff_penalty5(graph, edges_to_cut_list, E, prmDict):
+    t1 = time.process_time()
     monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges = miscellaneous.peff_hfrags(graph, edges_to_cut_list) 
+    print('mon frag def time', time.process_time() - t1)
+
+    t2 = time.process_time()
     ddimerFrags = miscellaneous.disjoint_dimers(monFrags, jdimerFrags) 
+    print('ddimer time', time.process_time() - t2)
+
+    t3 = time.process_time()
     mbe2 = peff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps)
+    print('mbe2 time', time.process_time() - t3)
     diff = E-mbe2
     penalty = sigmoid_peff(diff)
     return round(penalty,4)
@@ -315,6 +323,10 @@ def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDic
     return penalty_list
 
 def full_penalty_ga(x, atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict):
+    tpe = time.process_time()
+    peff_penalty5(graph, edges_to_cut_list, E, prmDict)
+    print('pe penalty', time.process_time() - tpe)
+
     penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), peff_penalty5(graph, edges_to_cut_list, E, prmDict), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
     print(' '.join(str(j) for j in x),file=open('positions.dat', "a"))

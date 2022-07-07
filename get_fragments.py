@@ -1,4 +1,3 @@
-from scipy import misc
 import graph_characterisation
 import load_data
 import miscellaneous
@@ -8,7 +7,6 @@ import aromaticity
 import rings
 import boxing
 import optimize
-import uff
 import argparse
 import networkx as nx
 import numpy as np
@@ -164,6 +162,7 @@ for i, sg in enumerate(connected_sg):
                                     random_mutation_max_val=2,
 
                                     mutation_by_replacement=True,
+                                    keep_parents=0,
                                     parent_selection_type="tournament",
                                     crossover_type="single_point",
 

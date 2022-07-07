@@ -357,18 +357,47 @@ def peff_hfrags(graph, edges_to_cut_list):
                 jdimerFrags['%d_%d' % (monpair[0], monpair[1])] = jdimer1
 
     return monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges
-    
-def disjoint_dimers(monFrags, jdimerFrags):
-    monKeys = list(monFrags)
-    monPairs = combinations(monKeys, 2)
 
-    ddimerFrags = {}
-    for pair in monPairs:
-        if "%s_%s" % (pair[0], pair[1]) in jdimerFrags or "%s_%s" % (pair[1], pair[0]) in jdimerFrags:
-            continue
-        else:
-            ddgraph = nx.compose(monFrags[pair[0]], monFrags[pair[1]])
-            ddimerFrags["%s_%s" % (pair[0], pair[1])] = ddgraph
+def centroid(graph):
+    mon_centroid = np.zeros(3)
+
+    for i in graph.nodes:
+        mon_centroid[0] += graph.nodes[i]['coord'][0]
+        mon_centroid[1] += graph.nodes[i]['coord'][1]
+        mon_centroid[2] += graph.nodes[i]['coord'][2]
+    
+    weight = 1.0/len(graph.nodes)
+    mon_centroid[0] *= weight
+    mon_centroid[1] *= weight
+    mon_centroid[2] *= weight
+
+    return mon_centroid
+
+def dimer_distance(mon1g, mon2g):
+    mon1_centroid = centroid(mon1g)
+    mon2_centroid = centroid(mon2g)
+
+    ix, iy, iz = mon1_centroid[0], mon1_centroid[1], mon1_centroid[2]
+    jx, jy, jz = mon2_centroid[0], mon2_centroid[1], mon2_centroid[2]
+
+    distance_sqr = (jx - ix) * (jx - ix)
+    distance_sqr += (jy - iy) * (jy - iy)
+    distance_sqr += (jz - iz) * (jz - iz)
+
+    return np.sqrt(distance_sqr)
+
+def disjoint_dimers(monFrags, jdimerFrags, cutoff=30): #distance is in bohr
+    distance_cutoff = cutoff * 0.529177 #converting distance to angstrom
+    monKeys = list(monFrags)
+    # monPairs = combinations(monKeys, 2)
+
+    ddimerFrags = []
+    # for pair in monPairs:
+    #     if "%s_%s" % (pair[0], pair[1]) in jdimerFrags or "%s_%s" % (pair[1], pair[0]) in jdimerFrags:
+    #         continue
+    #     else:
+    #         ddgraph = nx.compose(monFrags[pair[0]], monFrags[pair[1]])
+    #         ddimerFrags["%s_%s" % (pair[0], pair[1])] = ddgraph
     
     # os.system('mkdir ddfrags')
     # for dd in ddimerFrags:
@@ -377,6 +406,17 @@ def disjoint_dimers(monFrags, jdimerFrags):
 
     #     for node in list(ddimerFrags[dd].nodes):
     #         print('%s' % ddimerFrags[dd].nodes[node]['element'], '\t'.join(str(hc) for hc in ddimerFrags[dd].nodes[node]['coord']), file=open('ddfrags/%s.xyz' % dd, 'a'))
+    for i in monKeys:
+        jList = [x for x in monKeys if x < i]
+        for j in jList:
+            monpair = tuple(sorted([i, j]))
+            if i == j:
+                continue
+            if '%s_%s' % (monpair[0], monpair[1]) in jdimerFrags:
+                continue
+            if dimer_distance(monFrags[i], monFrags[j]) <= distance_cutoff:
+                ddimerFrags.append('%s_%s' % (monpair[0], monpair[1]))
+
 
     return ddimerFrags
 

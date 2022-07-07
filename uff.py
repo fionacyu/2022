@@ -1,7 +1,6 @@
 import math
 from itertools import combinations
 from itertools import product
-from attr import frozen
 import numpy as np 
 from numpy import linalg
 from scipy import misc
