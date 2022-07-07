@@ -68,15 +68,21 @@ def _min_cycle(G, orth, weight=None):
     Computes the minimum weight cycle in G,
     orthogonal to the vector orth as per [p. 338, 1]
     """
+    # print('ortho', orth)
+    # print(sorted(G.nodes))
     enodes = set(miscellaneous.flatten([ list(nx.dfs_preorder_nodes(G, source=x, depth_limit=10) ) for x,_ in orth]) )
     # print('enodes', enodes)
     uvedges = [e for e in G.edges if len(set(e).intersection(enodes)) > 0]
     # t2 = time.process_time()
     T = nx.Graph()
     offset = min(G.nodes) - 1
+    # print('offset', offset)
     
-    nodes_idx = {node: idx for idx, node in enumerate(G.nodes())}
-    idx_nodes = {idx + offset: node for node, idx in nodes_idx.items()}
+    # nodes_idx = {node: idx for idx, node in enumerate(G.nodes())}
+    nodes_idx = {node: node - 1 - offset for _, node in enumerate(G.nodes())}
+    # print('nodes_idx', nodes_idx)
+    # idx_nodes = {idx + offset: node for node, idx in nodes_idx.items()}
+    idx_nodes = {node - 1: node for node, idx in nodes_idx.items()}
 
     nnodes = len(nodes_idx)
     # nnodes = max(G.nodes)

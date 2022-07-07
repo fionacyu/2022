@@ -62,7 +62,7 @@ G = boxing.box_classification(coordinates, G, nodeList) # d parameter goes at th
 
 t1 = time.process_time()
 G, conjugated_edges, proxMatrix = graph_characterisation.main(G, coordinates)
-print('conjugated_edges', conjugated_edges)
+# print('conjugated_edges', conjugated_edges)
 # print('graph_characterisation time: ', time.process_time() - t1)
 
 prmDict = load_data.read_prm()
@@ -93,7 +93,7 @@ for i, sg in enumerate(connected_sg):
     if len(sg.nodes) > desAtomNo:
     
         conjugated_edges_sg = [x for x in conjugated_edges if any([y in set(sg.nodes) for y in set(miscellaneous.flatten(x))  ])]
-        # print('conjugated_edges_sg', conjugated_edges_sg)
+        print('conjugated_edges_sg', conjugated_edges_sg)
         cycleDict = rings.edgeList_dictionary(sg)
         cycleDict = boxing.classify_cycles(sg, cycleDict)
         aromaticDict, sg = aromaticity.classify_aromatic_systems(sg, conjugated_edges_sg, coordinates, cycleDict)
@@ -162,7 +162,6 @@ for i, sg in enumerate(connected_sg):
                                     random_mutation_max_val=2,
 
                                     mutation_by_replacement=True,
-                                    keep_parents=0,
                                     parent_selection_type="tournament",
                                     crossover_type="single_point",
 
