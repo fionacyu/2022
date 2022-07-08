@@ -112,7 +112,8 @@ def _min_cycle(G, orth, weight=None):
     # print('min_path', min_path)
 
     # Now we obtain the actual path, re-map nodes in T to those in G
-    min_path_nodes = [node if node < offset + nnodes else node - nnodes for node in min_path]
+    # min_path_nodes = [node if node < offset + nnodes else node - nnodes for node in min_path]
+    min_path_nodes = [node if node < max(G.nodes) else node - nnodes for node in min_path]
     # print('min_path_nodes', min_path_nodes)
     # Now remove the edges that occur two times
     mcycle_pruned = _path_to_cycle(min_path_nodes)

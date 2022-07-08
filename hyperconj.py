@@ -1,4 +1,3 @@
-import rings
 import miscellaneous
 import boxing
 import load_data

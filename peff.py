@@ -28,23 +28,23 @@ def mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps):
     for mon in monFrags:
         mon_xyzstr = conv_graph_xyzstr(monFrags[mon])
         monEnergies[mon] = molecule_energy(mon_xyzstr)
-    print('mon energy time', time.process_time() - t1)
+    # print('mon energy time', time.process_time() - t1)
 
     t2 = time.process_time()
-    print('len jdimer', len(jdimerFrags))
+    # print('len jdimer', len(jdimerFrags))
     for jd in jdimerFrags:
         jd_xyzstr = conv_graph_xyzstr(jdimerFrags[jd])
         jdEnergies[jd] = molecule_energy(jd_xyzstr)
-    print('jdimer energy time', time.process_time() - t2)
+    # print('jdimer energy time', time.process_time() - t2)
     
     t3 = time.process_time()
-    print('len ddimer', len(ddimerFrags))
+    # print('len ddimer', len(ddimerFrags))
     for dd in ddimerFrags:
         mon1, mon2 = dd.split('_')[0], dd.split('_')[1]
         ddgraph = nx.compose(monFrags[mon1], monFrags[mon2])
         dd_xyzstr = conv_graph_xyzstr(ddgraph)
         ddEnergies[dd] = molecule_energy(dd_xyzstr)
-    print('ddimer energy time', time.process_time() - t3)
+    # print('ddimer energy time', time.process_time() - t3)
 
     sumMonEnergiesH = sum(monEnergies[x] for x in monEnergies)
     sumMonEnergies = sumMonEnergiesH - 0.5 *2625.5 * sum([v for _, v in monHcaps.items()])
