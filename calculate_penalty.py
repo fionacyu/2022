@@ -164,25 +164,6 @@ def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
 
     return round(sum(penaltyList)/len(penaltyList), 4)
 
-# def ring_strain(size):
-#     m, d, a, b, l = 1.30822, -125.911, 0.312439, 1.19633, -188.39
-#     y = size
-#     strain = pow(y, -1*m) * (d - 1 - l) + ((y-1+l)/y) * np.exp(-1 * a * (y-1)) * np.cos(b * (y-1)) 
-#     return strain.real
-
-# def ring_penalty(graph, cycleDict, edges_to_cut_list):
-#     if len(cycleDict) == 0:
-#         return 0
-#     # box edges go here, get the edges that would only be near cycles
-#     boxLabelList = list(dict.fromkeys(miscellaneous.flatten([cycleDict[x].boxLabelList for x in cycleDict])))
-#     edgesBoxes = [e for e in edges_to_cut_list if len(set([graph.nodes[e[0]]['box']]).intersection(boxLabelList)) > 0 or  len(set([graph.nodes[e[1]]['box']]).intersection(boxLabelList)) > 0  ]
-
-#     impactedCycles = [c for c in cycleDict if len(set(edgesBoxes).intersection(cycleDict[c].edgeList)) > 0]
-#     impactedCycleSize = [len(cycleDict[c].edgeList) for c in impactedCycles]
-#     totalstrain = round(sum([ring_strain(x) for x in impactedCycleSize]),4)
-#     # return abs(totalstrain)
-#     return round(abs(totalstrain)/658.7,4) # relative error
-
 def reference_vol(atoms, minAtomNo):
     atomCount = Counter(atoms)
     refRad = sum([v/len(atoms) * load_data.get_radii(k) for k,v in atomCount.items() ])
@@ -236,61 +217,56 @@ def sigmoid_peff(xvalue):
         negative = 0.0
     return positive + negative #1/(1 + math.exp(-a *(xvalue - 3.1))) + 1/(1 + math.exp(-a *(-1 * xvalue - 3.1)))
 
-def sigmoid_peff2(xvalue, noedges):
-    xmapped = xvalue * noedges
-    return sigmoid_peff(xmapped)
-
-
-def peff_penalty(graph, edges_to_cut_list, E):
+# def peff_penalty(graph, edges_to_cut_list, E):
     
-    # getting the monomer, dimer (joined and disjoint) graphs 
-    t1 = time.process_time()
-    monFrags, monHcaps, jdimerFrags, jdimerHcaps, _ = miscellaneous.peff_hfrags(graph, edges_to_cut_list) # monomer and joined dimers and their respective number of hydrogen caps 
-    # print('getting h cap time', time.process_time() - t1)
-    t2 = time.process_time()
-    ddimerFrags = miscellaneous.disjoint_dimers(monFrags, jdimerFrags) # disjoint dimers
-    # print('disjoint dimer', time.process_time() - t2)
-    # ^^ these are all dictionaries
-    # monFrags and jdimerFrags already have hydrogen caps appended to them 
+#     # getting the monomer, dimer (joined and disjoint) graphs 
+#     t1 = time.process_time()
+#     monFrags, monHcaps, jdimerFrags, jdimerHcaps, _ = miscellaneous.peff_hfrags(graph, edges_to_cut_list) # monomer and joined dimers and their respective number of hydrogen caps 
+#     # print('getting h cap time', time.process_time() - t1)
+#     t2 = time.process_time()
+#     ddimerFrags = miscellaneous.disjoint_dimers(monFrags, jdimerFrags) # disjoint dimers
+#     # print('disjoint dimer', time.process_time() - t2)
+#     # ^^ these are all dictionaries
+#     # monFrags and jdimerFrags already have hydrogen caps appended to them 
 
-    # get mbe2 energy for each individual energy type: bond, angle, torsional, inversion, vdw
-    # then sum altogether?
-    t3 = time.process_time()
-    mbe2 = uff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps)
-    # print('mbe2 time', time.process_time() - t3)
-    # print('mbe2', mbe2)
+#     # get mbe2 energy for each individual energy type: bond, angle, torsional, inversion, vdw
+#     # then sum altogether?
+#     t3 = time.process_time()
+#     mbe2 = uff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps)
+#     # print('mbe2 time', time.process_time() - t3)
+#     # print('mbe2', mbe2)
     
 
-    diff = E-mbe2 # energy in kj/mol
-    penalty = sigmoid_peff(diff)
-    # print('deviation original', diff)
+#     diff = E-mbe2 # energy in kj/mol
+#     penalty = sigmoid_peff(diff)
+#     # print('deviation original', diff)
 
-    # penalty = abs(E-mbe2)/abs(E-mbe2wcs)
-    return round(penalty,4)
+#     # penalty = abs(E-mbe2)/abs(E-mbe2wcs)
+#     return round(penalty,4)
 
-def peff_penalty3(graph, edges_to_cut_list, E, prmDict):
-    monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges = miscellaneous.peff_hfrags(graph, edges_to_cut_list) 
+# def peff_penalty3(graph, edges_to_cut_list, E, prmDict):
+#     monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges = miscellaneous.peff_hfrags(graph, edges_to_cut_list) 
 
-    mbe2 = uff.mbe2_eff(monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges, prmDict)
-    diff = E - mbe2
-    # print('deviation effective', diff)
-    print(diff, file=open('peff.dat', 'a'))
-    penalty = sigmoid_peff(diff)
+#     mbe2 = uff.mbe2_eff(monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges, prmDict)
+#     diff = E - mbe2
+#     # print('deviation effective', diff)
+#     print(diff, file=open('peff.dat', 'a'))
+#     penalty = sigmoid_peff(diff)
 
-    return round(penalty, 4)
+#     return round(penalty, 4)
 
-def peff_penalty4(graph, edges_to_cut_list, prmDict):
-    monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges = miscellaneous.peff_hfrags(graph, edges_to_cut_list) 
+# def peff_penalty4(graph, edges_to_cut_list, prmDict):
+#     monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges = miscellaneous.peff_hfrags(graph, edges_to_cut_list) 
 
-    diff = uff.peff_mbe2(graph, edges_to_cut_list, monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges, prmDict)
-    # print('deviation effective2', diff)
-    penalty = sigmoid_peff(diff)
+#     diff = uff.peff_mbe2(graph, edges_to_cut_list, monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges, prmDict)
+#     # print('deviation effective2', diff)
+#     penalty = sigmoid_peff(diff)
 
-    return round(penalty, 4)
+#     return round(penalty, 4)
 
 def peff_penalty5(graph, edges_to_cut_list, E, prmDict):
     t1 = time.process_time()
-    monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges = miscellaneous.peff_hfrags(graph, edges_to_cut_list) 
+    monFrags, monHcaps, jdimerFrags, jdimerHcaps, jd_cutedge = miscellaneous.peff_hfrags(graph, edges_to_cut_list) 
     # print('mon frag def time', time.process_time() - t1)
 
     t2 = time.process_time()
@@ -298,11 +274,11 @@ def peff_penalty5(graph, edges_to_cut_list, E, prmDict):
     # print('ddimer time', time.process_time() - t2)
 
     t3 = time.process_time()
-    mbe2 = peff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps)
+    mbe2, edge_dij = peff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps, jd_cutedge)
     # print('mbe2 time', time.process_time() - t3)
     diff = E-mbe2
     penalty = sigmoid_peff(diff)
-    return round(penalty,4)
+    return round(penalty,4), edge_dij
 
 
 def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict):
@@ -323,11 +299,12 @@ def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDic
     return penalty_list
 
 def full_penalty_ga(x, atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict):
-    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), peff_penalty5(graph, edges_to_cut_list, E, prmDict), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+    pe_penalty, edge_dij =  peff_penalty5(graph, edges_to_cut_list, E, prmDict)
+    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), pe_penalty, conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
     penalty_list = np.array(penalty_list)
     print(' '.join(str(j) for j in x),file=open('positions.dat', "a"))
     print(("%-20s " * len(penalty_list)) % tuple([str(i) for i in penalty_list]), file=open('penalties.dat', "a"))
     beta_values = np.array(betalist)
 
     total_penalty = np.dot(penalty_list, beta_values)
-    return total_penalty
+    return total_penalty, edge_dij

@@ -256,12 +256,12 @@ def peff_hfrags(graph, edges_to_cut_list):
 
     monFrags, jdimerFrags = {}, {}
     monHcaps, jdimerHcaps = {}, {}
-    jdimerEdges = {}
     connectedComp = (fgraph.subgraph(x) for x in nx.connected_components(fgraph))
     # ncount = len(list(graph.nodes))
     ncount = max(graph.nodes)
     cutedge_monid = {}
     monid_cutedge = {}
+    jd_cutedge = {}
     # print('ncount', ncount)
     for i, sg in enumerate(connectedComp):
         sg1 = sg.copy()
@@ -351,12 +351,14 @@ def peff_hfrags(graph, edges_to_cut_list):
                         
                 jdimerFrags['%d_%d' % (monpair[0], monpair[1])] = jdimer
                 jdimerHcaps['%d_%d' % (monpair[0], monpair[1])] = hcaps
+                jd_cutedge['%d_%d' % (monpair[0], monpair[1])] = [e]
             else:
                 jdimer1 = jdimerFrags['%d_%d' % (monpair[0], monpair[1])]
                 jdimer1.add_edge(e[0], e[1], **{'bo': graph[e[0]][e[1]]['bo'], 'r': linalg.norm(np.array(graph.nodes[e[0]]['coord']) - np.array(graph.nodes[e[1]]['coord']))})
                 jdimerFrags['%d_%d' % (monpair[0], monpair[1])] = jdimer1
+                jd_cutedge['%d_%d' % (monpair[0], monpair[1])].append(e)
 
-    return monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges
+    return monFrags, monHcaps, jdimerFrags, jdimerHcaps, jd_cutedge
 
 def centroid(graph):
     mon_centroid = np.zeros(3)

@@ -1156,7 +1156,8 @@ class GA:
                 # Use the parent's index to return its pre-calculated fitness value.
                 fitness = self.previous_generation_fitness[parent_idx]
             else:
-                fitness = self.fitness_func(sol, sol_idx)
+                fitness, edge_dij, fedges_idx = self.fitness_func(sol, sol_idx)
+                
                 if type(fitness) in GA.supported_int_float_types:
                     pass
                 else:
@@ -1164,14 +1165,15 @@ class GA:
             pop_fitness.append(fitness)
 
         pop_fitness = numpy.array(pop_fitness)
-
-        return pop_fitness
+        
+        return pop_fitness, edge_dij, fedges_idx
 
     def run(self):
 
         """
         Runs the genetic algorithm. This is the main method in which the genetic algorithm is evolved through a number of generations.
         """
+        ol_edges = set() # off limit edges' index
 
         if self.valid_parameters == False:
             raise ValueError("Error calling the run() method: \nThe run() method cannot be executed with invalid parameters. Please check the parameters passed while creating an instance of the GA class.\n")
@@ -1189,8 +1191,22 @@ class GA:
         stop_run = False
 
         # Measuring the fitness of each chromosome in the population. Save the fitness in the last_generation_fitness attribute.
-        self.last_generation_fitness = self.cal_pop_fitness()
+        self.last_generation_fitness, edge_dij, fedges_idx = self.cal_pop_fitness()
+        # print('last_generation_fitness', self.last_generation_fitness)
+        # print('len of edge_dij', len(edge_dij))
+        # print('len of fedges_idx', len(fedges_idx))
+        super_edgedij = {
+                        k: min(filter(None, [d.get(k) for d in edge_dij]))
+                        for k in set().union(*edge_dij)
+                    }
+        
+        # print('super_edgedij', super_edgedij)
+        for edge in super_edgedij:
+            # print('edge', edge)
+            if super_edgedij[edge] > 4.2:
+                ol_edges.add(fedges_idx[edge])
 
+        # print('fedges_idx', fedges_idx)
         best_solution, best_solution_fitness, best_match_idx = self.best_solution(pop_fitness=self.last_generation_fitness)
 
         # Appending the best solution in the initial population to the best_solutions list.
@@ -1267,11 +1283,24 @@ class GA:
                 self.population[0:parents_to_keep.shape[0], :] = parents_to_keep
                 self.population[parents_to_keep.shape[0]:, :] = self.last_generation_offspring_mutation
 
+            for idx in ol_edges:
+                self.population[:,idx] = 0
+
+
             self.generations_completed = generation + 1 # The generations_completed attribute holds the number of the last completed generation.
 
             self.previous_generation_fitness = self.last_generation_fitness.copy()
             # Measuring the fitness of each chromosome in the population. Save the fitness in the last_generation_fitness attribute.
-            self.last_generation_fitness = self.cal_pop_fitness()
+            self.last_generation_fitness, edge_dij1, fedges_idx = self.cal_pop_fitness()
+
+            super_edgedij1 = {
+                        k: min(filter(None, [d.get(k) for d in edge_dij1]))
+                        for k in set().union(*edge_dij1)
+                    }
+        
+            for edge in super_edgedij1:
+                if super_edgedij1[edge] > 4.2:
+                    ol_edges.add(fedges_idx[edge])
 
             best_solution, best_solution_fitness, best_match_idx = self.best_solution(pop_fitness=self.last_generation_fitness)
 
@@ -3127,7 +3156,7 @@ class GA:
         # Getting the best solution after finishing all generations.
         # At first, the fitness is calculated for each solution in the final generation.
         if pop_fitness is None:
-            pop_fitness = self.cal_pop_fitness()
+            pop_fitness, edge_dij, fedges_idx = self.cal_pop_fitness()
         # Then return the index of that solution corresponding to the best fitness.
         best_match_idx = numpy.where(pop_fitness == numpy.max(pop_fitness))[0][0]
 

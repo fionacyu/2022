@@ -20,9 +20,10 @@ def conv_graph_xyzstr(graph, comment=''):
 def dimer_comp(dname):
     return dname.split('_')[0], dname.split('_')[1]
 
-def mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps):
+def mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps, jd_cutedge):
     monEnergies = {}
     jdEnergies, ddEnergies = {}, {}
+    edge_dij = {}
 
     t1 = time.process_time()
     for mon in monFrags:
@@ -58,6 +59,8 @@ def mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps):
         if dimer in jdEnergies:
             # minus energy of hydrogen = 0.5 hartrees 
             inc = (dimerEnergies[dimer] - 2625.5 * 0.5 * int(jdimerHcaps[dimer])) - (monEnergies[mon1] - 2625.5 * 0.5 * int(monHcaps[mon1])) - (monEnergies[mon2] - 2625.5 * 0.5 * int(monHcaps[mon2]))
+            edgeList = jd_cutedge[dimer]
+            edge_dij.update(dict.fromkeys(edgeList, abs(dimerEnergies[dimer] - monEnergies[mon1] - monEnergies[mon2])))
         else:
             # with disjoint dimers, the hydrogens cancel out 
             inc = (dimerEnergies[dimer]) - (monEnergies[mon1]) - (monEnergies[mon2])
@@ -65,4 +68,4 @@ def mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps):
         intEnergy += inc
     
     mbe2 = sumMonEnergies + intEnergy
-    return mbe2
+    return mbe2, edge_dij

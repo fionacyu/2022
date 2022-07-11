@@ -75,7 +75,7 @@ def fitness_function(solution, solution_idx):
     edges_to_cut_list = optimize.convert_bvector_edges(solution1, feasible_edges)
     
     # need to multiply by -1 because GA only accepts maximization functions
-    penalty = - calculate_penalty.full_penalty_ga(solution1, atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, E, prmDict)
+    penalty, edge_dij = - calculate_penalty.full_penalty_ga(solution1, atoms, G, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, E, prmDict)
     # print(penalty)
     return round(penalty, 4)
 
@@ -107,6 +107,7 @@ for i, sg in enumerate(connected_sg):
         E = peff.molecule_energy(xyz_str)
         print('E time', time.process_time() - t11)
         feasible_edges = optimize.get_feasible_edges(sg)
+        fedges_idx = {edge: idx for idx, edge in enumerate(feasible_edges)}
         # print('feasible_edges', feasible_edges)
         print('\n'.join(str(i) for i in feasible_edges), file=open('%d/feasibleEdges_%d.dat' % (i, i), "a"))
         dim = len(feasible_edges)
@@ -124,9 +125,10 @@ for i, sg in enumerate(connected_sg):
                 # for node in list(sg.nodes):
                 #     print(node, sg.nodes[node])
                 # need to multiply by -1 because GA only accepts maximization functions
-                penalty = - calculate_penalty.full_penalty_ga(solution1, atoms, sg, edges_to_cut_list, conjugated_edges_sg, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, E, prmDict)
+                penalty, edge_dij = calculate_penalty.full_penalty_ga(solution1, atoms, sg, edges_to_cut_list, conjugated_edges_sg, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, E, prmDict)
+                penalty = - penalty
                 # print(penalty)
-                return round(penalty, 4)
+                return round(penalty, 4), edge_dij, fedges_idx
 
             def fitness_wrapper_sg(solution):
                 return fitness_function_sg(solution, 0)
@@ -141,6 +143,10 @@ for i, sg in enumerate(connected_sg):
                     
                     pop_fitness = pool.map(fitness_wrapper_sg, self.population)
                     pop_fitness = np.array(pop_fitness)
+                    edge_dij = pop_fitness[:,1]
+                    pop_fitness =  pop_fitness[:,0]
+
+        
                     max_value = np.max(pop_fitness)
                     max_value_idx = np.argmax(pop_fitness)
                     
@@ -151,7 +157,7 @@ for i, sg in enumerate(connected_sg):
                     # print([round(x,4) for x in pop_fitness])
                     print('best fitness: ', self.best_fitness)
                     
-                    return pop_fitness
+                    return pop_fitness, edge_dij, fedges_idx
 
             start_time = time.time()
             ga_instance_sg = PooledGA_SG(num_generations=500,
