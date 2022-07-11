@@ -89,11 +89,12 @@ idcount = 1
 symbolList, coordList, idList, brokenBonds = [], [], [], []
 hfragDict, fragNodes = {}, {}
 for i, sg in enumerate(connected_sg):
-    print(("%-20s " * len(penNames)) % tuple([str(i) for i in penNames]), file=open('penalties.dat', "a"))
-    print('comp%d atoms: ' % (i+1), len(set(sg.nodes)))
-    os.system('mkdir %d' % i)
-    if len(sg.nodes) > desAtomNo:
     
+    print('comp%d atoms: ' % (i+1), len(set(sg.nodes)))
+    
+    if len(sg.nodes) > desAtomNo:
+        os.system('mkdir %d' % i)
+        print(("%-20s " * len(penNames)) % tuple([str(i) for i in penNames]), file=open('penalties.dat', "a"))
         conjugated_edges_sg = [x for x in conjugated_edges if any([y in set(sg.nodes) for y in set(miscellaneous.flatten(x))  ])]
         print('conjugated_edges_sg', conjugated_edges_sg)
         cycleDict = rings.edgeList_dictionary(sg)
@@ -195,7 +196,7 @@ for i, sg in enumerate(connected_sg):
         symbolList.extend(symbolList1)
         coordList.extend(coordList1)
         idList.extend(idList1)
-        hfragDict1.update(hfragDict1)
+        hfragDict.update(hfragDict1)
         fragNodes.update(fragNodes1)
         brokenBonds.extend(miscellaneous.check_brokenbonds(sg, optimize.convert_bvector_edges(pos, feasible_edges)))
         idcount = count + 1
@@ -207,7 +208,7 @@ for i, sg in enumerate(connected_sg):
         symbolList.extend(symbolList1)
         coordList.extend(coordList1)
         idList.extend(idList1)
-        hfragDict1.update(hfragDict1)
+        hfragDict.update(hfragDict1)
         fragNodes.update(fragNodes1)
         idcount = count + 1
         
@@ -216,6 +217,7 @@ molDict = {'molecule': {'fragments': {'nfrag': len(Counter(idList)), 'fragid': i
 # print(molDict, file=open('frag.json', 'a'))
 with open('frag.json', 'w') as fp:
     json.dump(molDict, fp, indent=4)
+# print('hfragDict', hfragDict)
 miscellaneous.fragment_xyz(symbolList, coordList, idList, G, coordinates, hfragDict, fragNodes)
 ###########
 
