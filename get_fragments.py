@@ -16,7 +16,8 @@ from collections import Counter
 import os
 import json
 import sys
-import pygad
+# import pygad
+import pygadFY
 import peff
 from multiprocessing import Pool
 mp.set_start_method('fork')
@@ -130,7 +131,7 @@ for i, sg in enumerate(connected_sg):
             def fitness_wrapper_sg(solution):
                 return fitness_function_sg(solution, 0)
 
-            class PooledGA_SG(pygad.GA):
+            class PooledGA_SG(pygadFY.GA):
             # def __init__(self):
                 best_fitness = -5.0
                 #     self.best_pos = np.array([])
