@@ -159,11 +159,28 @@ for i, sg in enumerate(connected_sg):
                     
                     return pop_fitness, edge_dij, fedges_idx
 
+            init_pop = np.zeros((mp.cpu_count(), dim), dtype=int)
+            idxfirst = []
+            idxsecond = []
+            for idx in range(mp.cpu_count()):
+                second = np.r_[idx:dim:mp.cpu_count()+1]
+                first = np.array([idx] * len(second))
+
+                idxfirst.append(first)
+                idxsecond.append(second)
+
+            idx_first = np.concatenate(idxfirst, axis=0)
+            idx_second = np.concatenate(idxsecond, axis=0)
+
+            ii = (idx_first, idx_second)
+            init_pop[ii] = 1
+
             start_time = time.time()
-            ga_instance_sg = PooledGA_SG(num_generations=500,
+            ga_instance_sg = PooledGA_SG(num_generations=1000,
+                                    initial_population=init_pop,
                                     num_parents_mating=2,
-                                    sol_per_pop=8,
-                                    num_genes=dim,
+                                    # sol_per_pop=8,
+                                    # num_genes=dim,
                                     fitness_func=fitness_function_sg,
 
                                     init_range_low=0,
@@ -175,6 +192,7 @@ for i, sg in enumerate(connected_sg):
                                     mutation_by_replacement=True,
                                     parent_selection_type="tournament",
                                     crossover_type="single_point",
+                                    stop_criteria="reach_-1",
 
                                     gene_type=int)
 

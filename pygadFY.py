@@ -822,12 +822,19 @@ class GA:
                 else:
                     self.valid_parameters = False
                     raise TypeError("In the 'stop_criteria' parameter, the supported stop words are '{supported_stop_words}' but '{stop_word}' found.".format(supported_stop_words=self.supported_stop_words, stop_word=stop_word))
-
-                if number.replace(".", "").isnumeric():
+                
+                try:
                     number = float(number)
-                else:
+                except ValueError:
                     self.valid_parameters = False
                     raise TypeError("The value following the stop word in the 'stop_criteria' parameter must be a number but the value '{stop_val}' of type {stop_val_type} found.".format(stop_val=number, stop_val_type=type(number)))
+                
+
+                # if number.replace(".", "").isnumeric():
+                #     number = float(number)
+                # else:
+                #     self.valid_parameters = False
+                #     raise TypeError("The value following the stop word in the 'stop_criteria' parameter must be a number but the value '{stop_val}' of type {stop_val_type} found.".format(stop_val=number, stop_val_type=type(number)))
                 
                 self.stop_criteria.append([stop_word, number])
 
