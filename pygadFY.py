@@ -4,6 +4,7 @@ import matplotlib.pyplot
 import pickle
 import time
 import warnings
+import reporter
 
 class GA:
 
@@ -908,6 +909,11 @@ class GA:
         self.last_generation_offspring_mutation = None # A list holding the offspring after applying mutation in the last generation.
         self.previous_generation_fitness = None # Holds the fitness values of one generation before the fitness values saved in the last_generation_fitness attribute. Added in PyGAD 2.26.2
 
+        '''fiona's additions'''
+        self.best_fitness = None # Holds the best fitness value 
+        self.best_pos = None # numpy array holding the solution corresponding to the best fitness value 
+        self.sum_edges = None 
+
     def round_genes(self, solutions):
         for gene_idx in range(self.num_genes):
             if self.gene_type_single:
@@ -1199,6 +1205,10 @@ class GA:
 
         # Measuring the fitness of each chromosome in the population. Save the fitness in the last_generation_fitness attribute.
         self.last_generation_fitness, edge_dij, fedges_idx = self.cal_pop_fitness()
+        self.best_fitness = numpy.max(self.last_generation_fitness )
+        max_val_idx = numpy.argmax(self.last_generation_fitness )
+        self.best_pos = numpy.array(self.population[max_val_idx])
+        self.sum_edges = numpy.sum(self.population[max_val_idx])
         # print('last_generation_fitness', self.last_generation_fitness)
         # print('len of edge_dij', len(edge_dij))
         # print('len of fedges_idx', len(fedges_idx))
@@ -1224,8 +1234,10 @@ class GA:
         if self.save_solutions:
             self.solutions.extend(self.population.copy())
 
-        for generation in range(self.num_generations):
-            print('iter no:', generation)
+        rep = reporter.Reporter()
+        for generation in rep.pbar(self.num_generations, desc="GA Optimizer"):
+        # for generation in range(self.num_generations):
+            # print('iter no:', generation)
             # print('self.best_solutions', self.best_solutions)
             # print('self.solutions', self.solutions)
             # print('self.solutions_fitness', self.solutions_fitness)
@@ -1299,6 +1311,20 @@ class GA:
             self.previous_generation_fitness = self.last_generation_fitness.copy()
             # Measuring the fitness of each chromosome in the population. Save the fitness in the last_generation_fitness attribute.
             self.last_generation_fitness, edge_dij1, fedges_idx = self.cal_pop_fitness()
+            max_value = numpy.max(self.last_generation_fitness)
+            max_val_idx = numpy.argmax(self.last_generation_fitness)
+            if max_value > self.best_fitness:
+                self.best_fitness = max_value
+                self.best_pos = numpy.array(self.population[max_val_idx])
+                self.sum_edges = numpy.sum(self.population[max_val_idx])
+            
+            if max_value == self.best_fitness and numpy.sum(self.population[max_val_idx]) > self.sum_edges:
+                self.best_fitness = max_value
+                self.best_pos = numpy.array(self.population[max_val_idx])
+                self.sum_edges = numpy.sum(self.population[max_val_idx])
+
+            best_cost = self.best_fitness
+            rep.hook({'best_cost': '{:.4f}'.format(best_cost)})
 
             super_edgedij1 = {
                         k: min(filter(None, [d.get(k) for d in edge_dij1]))
@@ -1368,6 +1394,7 @@ class GA:
 
         # Converting the 'solutions' list into a NumPy array.
         self.solutions = numpy.array(self.solutions)
+        
 
     def steady_state_selection(self, fitness, num_parents):
 

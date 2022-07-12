@@ -135,8 +135,8 @@ for i, sg in enumerate(connected_sg):
 
             class PooledGA_SG(pygadFY.GA):
             # def __init__(self):
-                best_fitness = -5.0
-                sum_edges = 0
+                # best_fitness = -5.0
+                # sum_edges = 0
                 #     self.best_pos = np.array([])
 
                 def cal_pop_fitness(self):
@@ -148,24 +148,24 @@ for i, sg in enumerate(connected_sg):
                     pop_fitness =  pop_fitness[:,0]
 
         
-                    max_value = np.max(pop_fitness)
-                    max_value_idx = np.argmax(pop_fitness)
+                    # max_value = np.max(pop_fitness)
+                    # max_value_idx = np.argmax(pop_fitness)
                     
-                    if max_value > self.best_fitness:# and np.sum(np.array(self.population[max_value_idx])) > self.sum_edges:
-                        self.best_fitness = max_value
-                        self.best_pos = np.array(self.population[max_value_idx])
-                        self.sum_edges = np.sum(np.array(self.population[max_value_idx]))
+                    # if max_value > self.best_fitness:# and np.sum(np.array(self.population[max_value_idx])) > self.sum_edges:
+                    #     self.best_fitness = max_value
+                    #     self.best_pos = np.array(self.population[max_value_idx])
+                    #     self.sum_edges = np.sum(np.array(self.population[max_value_idx]))
                     
-                    if max_value == self.best_fitness and np.sum(np.array(self.population[max_value_idx])) > self.sum_edges:
-                        print('--max value', max_value)
-                        print('--sum edges', np.sum(np.array(self.population[max_value_idx])))
-                        self.best_fitness = max_value
-                        self.best_pos = np.array(self.population[max_value_idx])
-                        self.sum_edges = np.sum(np.array(self.population[max_value_idx]))
+                    # if max_value == self.best_fitness and np.sum(np.array(self.population[max_value_idx])) > self.sum_edges:
+                    #     print('--max value', max_value)
+                    #     print('--sum edges', np.sum(np.array(self.population[max_value_idx])))
+                    #     self.best_fitness = max_value
+                    #     self.best_pos = np.array(self.population[max_value_idx])
+                    #     self.sum_edges = np.sum(np.array(self.population[max_value_idx]))
 
                     
                     # print([round(x,4) for x in pop_fitness])
-                    print('best fitness: ', self.best_fitness)
+                    # print('best fitness: ', self.best_fitness)
                     
                     return pop_fitness, edge_dij, fedges_idx
 
@@ -187,7 +187,7 @@ for i, sg in enumerate(connected_sg):
             # init_pop[ii] = 1
 
             start_time = time.time()
-            ga_instance_sg = PooledGA_SG(num_generations=1000,
+            ga_instance_sg = PooledGA_SG(num_generations=500,
                                     # initial_population=init_pop,
                                     num_parents_mating=2,
                                     sol_per_pop=8,
