@@ -136,6 +136,7 @@ for i, sg in enumerate(connected_sg):
             class PooledGA_SG(pygadFY.GA):
             # def __init__(self):
                 best_fitness = -5.0
+                sum_edges = 0
                 #     self.best_pos = np.array([])
 
                 def cal_pop_fitness(self):
@@ -150,37 +151,47 @@ for i, sg in enumerate(connected_sg):
                     max_value = np.max(pop_fitness)
                     max_value_idx = np.argmax(pop_fitness)
                     
-                    if max_value > self.best_fitness:
+                    if max_value > self.best_fitness:# and np.sum(np.array(self.population[max_value_idx])) > self.sum_edges:
                         self.best_fitness = max_value
                         self.best_pos = np.array(self.population[max_value_idx])
+                        self.sum_edges = np.sum(np.array(self.population[max_value_idx]))
+                    
+                    if max_value == self.best_fitness and np.sum(np.array(self.population[max_value_idx])) > self.sum_edges:
+                        print('--max value', max_value)
+                        print('--sum edges', np.sum(np.array(self.population[max_value_idx])))
+                        self.best_fitness = max_value
+                        self.best_pos = np.array(self.population[max_value_idx])
+                        self.sum_edges = np.sum(np.array(self.population[max_value_idx]))
+
                     
                     # print([round(x,4) for x in pop_fitness])
                     print('best fitness: ', self.best_fitness)
                     
                     return pop_fitness, edge_dij, fedges_idx
 
-            init_pop = np.zeros((mp.cpu_count(), dim), dtype=int)
-            idxfirst = []
-            idxsecond = []
-            for idx in range(mp.cpu_count()):
-                second = np.r_[idx:dim:mp.cpu_count()+1]
-                first = np.array([idx] * len(second))
+            '''init population feature'''
+            # init_pop = np.zeros((mp.cpu_count(), dim), dtype=int)
+            # idxfirst = []
+            # idxsecond = []
+            # for idx in range(mp.cpu_count()):
+            #     second = np.r_[idx:dim:mp.cpu_count()+1]
+            #     first = np.array([idx] * len(second))
 
-                idxfirst.append(first)
-                idxsecond.append(second)
+            #     idxfirst.append(first)
+            #     idxsecond.append(second)
 
-            idx_first = np.concatenate(idxfirst, axis=0)
-            idx_second = np.concatenate(idxsecond, axis=0)
+            # idx_first = np.concatenate(idxfirst, axis=0)
+            # idx_second = np.concatenate(idxsecond, axis=0)
 
-            ii = (idx_first, idx_second)
-            init_pop[ii] = 1
+            # ii = (idx_first, idx_second)
+            # init_pop[ii] = 1
 
             start_time = time.time()
             ga_instance_sg = PooledGA_SG(num_generations=1000,
-                                    initial_population=init_pop,
+                                    # initial_population=init_pop,
                                     num_parents_mating=2,
-                                    # sol_per_pop=8,
-                                    # num_genes=dim,
+                                    sol_per_pop=8,
+                                    num_genes=dim,
                                     fitness_func=fitness_function_sg,
 
                                     init_range_low=0,
