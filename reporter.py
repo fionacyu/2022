@@ -9,6 +9,7 @@ import pprint
 import yaml
 from tqdm import trange
 
+'''Taken from pyswarms (https://github.com/ljvmiranda921/pyswarms/blob/ea161d9a932388a2595e777b8f140833406e0a77/pyswarms/utils/reporter/reporter.py)'''
 
 class Reporter(object):
     """A Reporter object that abstracts various logging capabilities

@@ -6,6 +6,11 @@ import time
 import warnings
 import reporter
 
+def ascend(dict):
+   sorted_dict = {k: v for k, v in sorted(dict.items(), key=lambda item: item[1])}
+   for key, value in sorted_dict.items():
+      print(key,':', value, file=open('edge_dij.dat', 'a'))
+
 class GA:
 
     supported_int_types = [int, numpy.int, numpy.int8, numpy.int16, numpy.int32, numpy.int64, numpy.uint, numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]
@@ -1187,6 +1192,7 @@ class GA:
         Runs the genetic algorithm. This is the main method in which the genetic algorithm is evolved through a number of generations.
         """
         ol_edges = set() # off limit edges' index
+        oledge_dict = {}
 
         if self.valid_parameters == False:
             raise ValueError("Error calling the run() method: \nThe run() method cannot be executed with invalid parameters. Please check the parameters passed while creating an instance of the GA class.\n")
@@ -1222,6 +1228,10 @@ class GA:
             # print('edge', edge)
             if super_edgedij[edge] > 4.2:
                 ol_edges.add(fedges_idx[edge])
+            if edge not in oledge_dict:
+                oledge_dict[edge] = [super_edgedij[edge]]
+            else:
+                oledge_dict[edge].append(super_edgedij[edge])
 
         # print('fedges_idx', fedges_idx)
         best_solution, best_solution_fitness, best_match_idx = self.best_solution(pop_fitness=self.last_generation_fitness)
@@ -1334,6 +1344,10 @@ class GA:
             for edge in super_edgedij1:
                 if super_edgedij1[edge] > 4.2:
                     ol_edges.add(fedges_idx[edge])
+                if edge not in oledge_dict:
+                    oledge_dict[edge] = [super_edgedij1[edge]]
+                else:
+                    oledge_dict[edge].append(super_edgedij1[edge])
 
             best_solution, best_solution_fitness, best_match_idx = self.best_solution(pop_fitness=self.last_generation_fitness)
 
@@ -1394,6 +1408,7 @@ class GA:
 
         # Converting the 'solutions' list into a NumPy array.
         self.solutions = numpy.array(self.solutions)
+        ascend(oledge_dict)
         
 
     def steady_state_selection(self, fitness, num_parents):

@@ -164,10 +164,10 @@ def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
 
     return round(sum(penaltyList)/len(penaltyList), 4)
 
-def reference_vol(atoms, minAtomNo):
+def reference_vol(atoms, desAtomNo):
     atomCount = Counter(atoms)
     refRad = sum([v/len(atoms) * load_data.get_radii(k) for k,v in atomCount.items() ])
-    refVol = 4/3 * math.pi * refRad**3 * minAtomNo
+    refVol = 4/3 * math.pi * refRad**3 * desAtomNo
     return refVol
 
 def vol_sigmoid(xvalue):
@@ -180,8 +180,8 @@ def vol_sigmoid(xvalue):
     return 2/(1 + math.exp(-a * xvalue * xvalue)) - 1
 
 
-def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo):
-    refVol = reference_vol(atoms, minAtomNo)
+def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, desAtomNo):
+    refVol = reference_vol(atoms, desAtomNo)
     tgraph = graph.copy() 
     tgraph.remove_edges_from(edges_to_cut_list)
     # print([x for x in nx.connected_components(tgraph)], file=open('connectedCompVol.dat', 'a'))
@@ -281,8 +281,8 @@ def peff_penalty5(graph, edges_to_cut_list, E, prmDict):
     return round(penalty,4), edge_dij
 
 
-def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict):
-    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), peff_penalty5(graph, edges_to_cut_list, E, prmDict), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, E, prmDict):
+    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), peff_penalty5(graph, edges_to_cut_list, E, prmDict), conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, desAtomNo)]
     penalty_list = np.array(penalty_list)
     # print('penalty_list:', penalty_list)
     print(("%-20s " * len(penalty_list)) % tuple([str(i) for i in penalty_list]), file=open('penalties.dat', "a"))
@@ -291,16 +291,16 @@ def full_penalty(atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, a
     total_penalty = np.dot(penalty_list, beta_values)
     return total_penalty
 
-def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict):
+def full_penalty_opt(x, feasible_edges, atoms, graph, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, E, prmDict):
     edges_to_cut_list = optimize.convert_bvector_edges1(x, feasible_edges)
     pool = mp.Pool(mp.cpu_count())
-    penalty_list = pool.starmap_async(miscellaneous.full_penalty, [(atoms, graph, x[i], edges_to_cut_list[i], conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict) for i in range(len(edges_to_cut_list))]).get()
+    penalty_list = pool.starmap_async(miscellaneous.full_penalty, [(atoms, graph, x[i], edges_to_cut_list[i], conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, E, prmDict) for i in range(len(edges_to_cut_list))]).get()
     pool.close()
     return penalty_list
 
-def full_penalty_ga(x, atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, minAtomNo, E, prmDict):
+def full_penalty_ga(x, atoms, graph, edges_to_cut_list, conjugated_edges, donorDict, acceptorDict, connectionDict, aromaticDict, betalist, proxMatrix, desAtomNo, E, prmDict):
     pe_penalty, edge_dij =  peff_penalty5(graph, edges_to_cut_list, E, prmDict)
-    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), pe_penalty, conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, minAtomNo)]
+    penalty_list = [bond_order_penalty(graph, edges_to_cut_list), aromaticity_penalty(graph, aromaticDict, edges_to_cut_list), pe_penalty, conjugation_penalty(graph, edges_to_cut_list, conjugated_edges), hyperconjugation_penalty(donorDict, acceptorDict, connectionDict, edges_to_cut_list), volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, desAtomNo)]
     penalty_list = np.array(penalty_list)
     print(' '.join(str(j) for j in x),file=open('positions.dat', "a"))
     print(("%-20s " * len(penalty_list)) % tuple([str(i) for i in penalty_list]), file=open('penalties.dat', "a"))

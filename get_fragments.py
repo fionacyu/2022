@@ -207,7 +207,7 @@ for i, sg in enumerate(connected_sg):
 
                                     gene_type=int)
 
-            with Pool(processes=10) as pool:
+            with Pool(processes=8) as pool:
                 ga_instance_sg.run()
 
                 # solution, solution_fitness, solution_idx = ga_instance.best_solution()
@@ -238,6 +238,8 @@ for i, sg in enumerate(connected_sg):
         idcount = count + 1
         os.system('mv positions.dat %d/positions_%d.dat' % (i, i))
         os.system('mv penalties.dat %d/penalties_%d.dat' % (i, i))
+        os.system('mv volume_penalty.dat %d/volume_penalty_%d.dat' % (i, i))
+        os.system('mv edge_dij.dat %d/edge_dij_%d.dat' % (i,i))
     
     else:
         symbolList1, coordList1, idList1, hfragDict1, fragNodes1, count = miscellaneous.get_fragments_sg(sg, [], idcount)
