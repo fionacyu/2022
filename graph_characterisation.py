@@ -157,56 +157,56 @@ def conjugate_region(graph): # returns set of nodes(atoms) whose electrons are c
     connected_nodes = [x for x in connected_nodes if len(x) > 2]
     for components in connected_nodes:
         nodeList = list(components)
-        cnodesList = [x for x in nodeList if graph.nodes[x]['element'] == 'C']
+        # cnodesList = [x for x in nodeList if graph.nodes[x]['element'] == 'C']
         # print('connected nodeList', nodeList)
         # problematic nodes only accounts for allenes
-        problematic_nodes = [] # list of nodes which contain double bonds on either side of it, scenario 1. one conjugated, the other isn't or 2. both are invovled in conjugation but are not in the same conjugation system
-        # pnDict = {}
-        for node in cnodesList:
-            # print('node', node)
-            neighbourList = [x for x in sg.neighbors(node)]
-            # print('neighbourList', neighbourList)
+        # problematic_nodes = [] # list of nodes which contain double bonds on either side of it, scenario 1. one conjugated, the other isn't or 2. both are invovled in conjugation but are not in the same conjugation system
+        # # pnDict = {}
+        # for node in cnodesList:
+        #     # print('node', node)
+        #     neighbourList = [x for x in sg.neighbors(node)]
+        #     # print('neighbourList', neighbourList)
 
-            boList = np.array([graph[node][x]['bo'] for x in neighbourList])
-            elemList = [graph.nodes[x]['element'] for x in neighbourList]
-            indList = np.where(boList == 2)[0]
-            if indList.size >= 2 and len(np.where(np.array([elemList[i] for i in indList]) == 'C')[0]) >= 2:
-                problematic_nodes.append(node)
+        #     boList = np.array([graph[node][x]['bo'] for x in neighbourList])
+        #     elemList = [graph.nodes[x]['element'] for x in neighbourList]
+        #     indList = np.where(boList == 2)[0]
+        #     if indList.size >= 2 and len(np.where(np.array([elemList[i] for i in indList]) == 'C')[0]) >= 2:
+        #         problematic_nodes.append(node)
 
-        # print('problematic_nodes', problematic_nodes)
+        # # print('problematic_nodes', problematic_nodes)
 
-        if len(problematic_nodes) == 0:
-            conjugated_edges.append([e for e in graph.edges if e[0] in components and e[1] in components])
-            conjugated_nodes.append(components)
+        # if len(problematic_nodes) == 0:
+        conjugated_edges.append([e for e in graph.edges if e[0] in components and e[1] in components])
+        conjugated_nodes.append(components)
         
-        else: # applicable to allenes (chain and cyclic)
-            terminal_nodes = [x for x in nodeList if sg.degree[x] == 1 and graph.nodes[x]['element'] == 'C']
-            # print(terminal_nodes)
-            pnode_tnode_comb_list = list(product(problematic_nodes, terminal_nodes))
-            # print('pnode_tnode_comb_list', pnode_tnode_comb_list)
-            for comb in pnode_tnode_comb_list:
-                # print('comb', comb)
-                pnode, tnode = comb[0], comb[1]
-                other_pnode_list = [x for x in problematic_nodes if x != pnode]
-                path = list(nx.all_simple_paths(sg, source=pnode, target=tnode)) 
-                # print('path', path)
-                pnode_in_path = [x for x in other_pnode_list if x in path[0]] # there should be only one list, hence the [0]
-                if not pnode_in_path and len(path[0]) > 2: # there is no other problematic node in the path 
-                    conjugated_edges.append([list(x) for x in map(nx.utils.pairwise, path)][0])
-                    conjugated_nodes.append(path[0])
+        # else: # applicable to allenes (chain and cyclic)
+        #     terminal_nodes = [x for x in nodeList if sg.degree[x] == 1 and graph.nodes[x]['element'] == 'C']
+        #     # print(terminal_nodes)
+        #     pnode_tnode_comb_list = list(product(problematic_nodes, terminal_nodes))
+        #     # print('pnode_tnode_comb_list', pnode_tnode_comb_list)
+        #     for comb in pnode_tnode_comb_list:
+        #         # print('comb', comb)
+        #         pnode, tnode = comb[0], comb[1]
+        #         other_pnode_list = [x for x in problematic_nodes if x != pnode]
+        #         path = list(nx.all_simple_paths(sg, source=pnode, target=tnode)) 
+        #         # print('path', path)
+        #         pnode_in_path = [x for x in other_pnode_list if x in path[0]] # there should be only one list, hence the [0]
+        #         if not pnode_in_path and len(path[0]) > 2: # there is no other problematic node in the path 
+        #             conjugated_edges.append([list(x) for x in map(nx.utils.pairwise, path)][0])
+        #             conjugated_nodes.append(path[0])
             
-            if len(problematic_nodes) >= 2:
-                paircombinations = combinations(problematic_nodes, 2)
-                for pair in paircombinations:
-                    # print('pair', pair)
-                    nonpair_pnodes = [x for x in problematic_nodes if x != pair[0] and x != pair[1]]
-                    pair_path = list(nx.all_simple_paths(sg, source=pair[0], target=pair[1]))
-                    pair_path = sorted(pair_path, key=len)
-                    # print('pair_path', pair_path)
-                    pnode_in_pairpath = [x for x in nonpair_pnodes if x in pair_path[0]]
-                    if not pnode_in_pairpath and len(pair_path[0]) > 2:
-                        conjugated_edges.append([list(x) for x in map(nx.utils.pairwise, pair_path)][0])
-                        conjugated_nodes.append(pair_path[0])
+        #     if len(problematic_nodes) >= 2:
+        #         paircombinations = combinations(problematic_nodes, 2)
+        #         for pair in paircombinations:
+        #             # print('pair', pair)
+        #             nonpair_pnodes = [x for x in problematic_nodes if x != pair[0] and x != pair[1]]
+        #             pair_path = list(nx.all_simple_paths(sg, source=pair[0], target=pair[1]))
+        #             pair_path = sorted(pair_path, key=len)
+        #             # print('pair_path', pair_path)
+        #             pnode_in_pairpath = [x for x in nonpair_pnodes if x in pair_path[0]]
+        #             if not pnode_in_pairpath and len(pair_path[0]) > 2:
+        #                 conjugated_edges.append([list(x) for x in map(nx.utils.pairwise, pair_path)][0])
+        #                 conjugated_nodes.append(pair_path[0])
 
     for e in [x for x in graph.edges]:
         if e in miscellaneous.flatten(conjugated_edges) or e[::-1] in miscellaneous.flatten(conjugated_edges):

@@ -10,6 +10,7 @@ from collections import Counter
 import math
 import multiprocessing as mp
 import peff
+from numpy import linalg
 import time
 
 def bond_order_penalty(graph, edges_to_cut_list):
@@ -164,31 +165,71 @@ def aromaticity_penalty(graph, aromaticDict, edges_to_cut_list):
 
     return round(sum(penaltyList)/len(penaltyList), 4)
 
-def reference_vol(atoms, desAtomNo):
-    atomCount = Counter(atoms)
-    refRad = sum([v/len(atoms) * load_data.get_radii(k) for k,v in atomCount.items() ])
-    refVol = 4/3 * math.pi * refRad**3 * desAtomNo
+def reference_vol(atoms, desAtomNo, graph):
+    _volDict, volDict = {}, {}
+    for edge in graph.edges:
+        node1, node2 = edge[0], edge[1]
+        atom1, atom2 = graph.nodes[node1]['element'], graph.nodes[node2]['element']
+
+        dist = linalg.norm(np.array(graph.nodes[node1]['coord']) - np.array(graph.nodes[node2]['coord']))
+
+        alpha1 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * load_data.get_radii(atom1)**3), 2/3) # these are the decay factors
+        alpha2 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * load_data.get_radii(atom2)**3), 2/3) # 2√2 is taken to be the amplitude of the Gaussian
+
+        vij = 8 * math.exp(-1 * (alpha1 * alpha2 *dist**2)/(alpha1 + alpha2)) * pow(math.pi/(alpha1 + alpha2), 3/2)
+
+        if atom1 not in _volDict:
+            _volDict[atom1] = [vij]
+        else:
+            _volDict[atom1].append(vij)
+
+        if atom2 not in _volDict:
+            _volDict[atom2] = [vij]
+        else:
+            _volDict[atom2].append(vij) 
+
+    for k, v in _volDict.items():
+        average = np.average(np.array(v))
+        volDict[k] = average
+
+    # print('volDict', volDict)
+
+    atomList = [graph.nodes[x]['element'] for x in graph.nodes]
+    refVol = 0.0
+    atomno = len(atomList)
+    atomCounter = Counter(atomList)
+    for element, count in atomCounter.items():
+        sigma = load_data.get_radii(element)
+
+        incVol = count/atomno * (4/3 * math.pi * sigma**3 - volDict[element])
+        refVol += incVol
+    
+    refVol *= desAtomNo
+
     return refVol
 
-def vol_sigmoid(xvalue):
+def vol_sigmoid(xvalue, voldiff):
     # this sigmoid function has the x squared, functional form: 2/(1+exp(-ax^2)) - 1
     tol = 0.05 # 5% deviation from the asymptotic value of 1
     xref = 0.1 # only want 10% error 
 
     # obtain exponent a
     a = -1/(xref * xref) * math.log(-1 + 2/(2-tol))
-    return 2/(1 + math.exp(-a * xvalue * xvalue)) - 1
+    return 2/(1 + math.exp(-a * (xvalue - voldiff) * (xvalue - voldiff))) - 1
 
 
 def volume_penalty(atoms, graph, edges_to_cut_list, proxMatrix, desAtomNo):
-    refVol = reference_vol(atoms, desAtomNo)
+    voldiff = load_data.get_volume(graph, proxMatrix)/reference_vol(atoms, len(atoms), graph) - 1
+
+    refVol = reference_vol(atoms, desAtomNo, graph)
     tgraph = graph.copy() 
     tgraph.remove_edges_from(edges_to_cut_list)
     # print([x for x in nx.connected_components(tgraph)], file=open('connectedCompVol.dat', 'a'))
     connectedComp = (tgraph.subgraph(x) for x in nx.connected_components(tgraph))
     penaltyList = [(load_data.get_volume(sg, proxMatrix)/refVol - 1) for sg in connectedComp]
-    print(penaltyList, file=open('volume_penalty.dat', 'a'))
-    penaltyList = [vol_sigmoid(x) for x in penaltyList]
+    sizeList = [len(list(sg.nodes)) for sg in  (tgraph.subgraph(x) for x in nx.connected_components(tgraph))]
+    print(refVol, [load_data.get_volume(sg, proxMatrix) for sg in  (tgraph.subgraph(x) for x in nx.connected_components(tgraph))], sizeList, file=open('volume_penalty.dat', 'a'))
+    penaltyList = [vol_sigmoid(x, voldiff) for x in penaltyList]
     return round(sum(penaltyList)/len(penaltyList),4)
 
 def sigmoid_peff(xvalue):
@@ -216,53 +257,6 @@ def sigmoid_peff(xvalue):
     except OverflowError:
         negative = 0.0
     return positive + negative #1/(1 + math.exp(-a *(xvalue - 3.1))) + 1/(1 + math.exp(-a *(-1 * xvalue - 3.1)))
-
-# def peff_penalty(graph, edges_to_cut_list, E):
-    
-#     # getting the monomer, dimer (joined and disjoint) graphs 
-#     t1 = time.process_time()
-#     monFrags, monHcaps, jdimerFrags, jdimerHcaps, _ = miscellaneous.peff_hfrags(graph, edges_to_cut_list) # monomer and joined dimers and their respective number of hydrogen caps 
-#     # print('getting h cap time', time.process_time() - t1)
-#     t2 = time.process_time()
-#     ddimerFrags = miscellaneous.disjoint_dimers(monFrags, jdimerFrags) # disjoint dimers
-#     # print('disjoint dimer', time.process_time() - t2)
-#     # ^^ these are all dictionaries
-#     # monFrags and jdimerFrags already have hydrogen caps appended to them 
-
-#     # get mbe2 energy for each individual energy type: bond, angle, torsional, inversion, vdw
-#     # then sum altogether?
-#     t3 = time.process_time()
-#     mbe2 = uff.mbe2(monFrags, jdimerFrags, ddimerFrags, monHcaps, jdimerHcaps)
-#     # print('mbe2 time', time.process_time() - t3)
-#     # print('mbe2', mbe2)
-    
-
-#     diff = E-mbe2 # energy in kj/mol
-#     penalty = sigmoid_peff(diff)
-#     # print('deviation original', diff)
-
-#     # penalty = abs(E-mbe2)/abs(E-mbe2wcs)
-#     return round(penalty,4)
-
-# def peff_penalty3(graph, edges_to_cut_list, E, prmDict):
-#     monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges = miscellaneous.peff_hfrags(graph, edges_to_cut_list) 
-
-#     mbe2 = uff.mbe2_eff(monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges, prmDict)
-#     diff = E - mbe2
-#     # print('deviation effective', diff)
-#     print(diff, file=open('peff.dat', 'a'))
-#     penalty = sigmoid_peff(diff)
-
-#     return round(penalty, 4)
-
-# def peff_penalty4(graph, edges_to_cut_list, prmDict):
-#     monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges = miscellaneous.peff_hfrags(graph, edges_to_cut_list) 
-
-#     diff = uff.peff_mbe2(graph, edges_to_cut_list, monFrags, monHcaps, jdimerFrags, jdimerHcaps, jdimerEdges, prmDict)
-#     # print('deviation effective2', diff)
-#     penalty = sigmoid_peff(diff)
-
-#     return round(penalty, 4)
 
 def peff_penalty5(graph, edges_to_cut_list, E, prmDict):
     t1 = time.process_time()

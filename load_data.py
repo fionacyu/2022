@@ -82,7 +82,7 @@ def EDMbox(A,B):
 
 def get_bond_order(atom1, atom2, dist, tol):
     # bondDict = {('C', 'C'): {1: [1.37, 1.596], 1.5: [1.37, 1.432], 2: [1.243, 1.382], 3: [1.187, 1.268]}, ('C', 'Br'): {1: [1.789, 1.95]}, ('C', 'Cl'): {1: [1.612, 1.813]}, ('C', 'F'): {1: [1.262, 1.401]}, ('C', 'I'): {1: [1.992, 2.157]}, ('C', 'N'): {1: [1.347, 1.492], 1.5: [1.328, 1.35], 2: [1.207, 1.338], 3: [1.14, 1.177]}, ('C', 'O'): {1: [1.273, 1.448], 2: [1.135, 1.272], 3: [1.115, 1.145]}, ('C', 'P'): {1: [1.858, 1.858], 2: [1.673, 1.673], 3: [1.542, 1.562]}, ('C', 'S'): {1: [1.714, 1.849], 2: [1.553, 1.647], 3: [1.478, 1.535]}, ('C', 'Se'): {1: [1.855, 1.959], 2: [1.676, 1.709]}, ('C', 'Si'): {1: [1.722, 1.848]}, ('O', 'O'): {1: [1.116, 1.516], 2: [1.2, 1.208]}, ('N', 'O'): {1: [1.184, 1.507], 2: [1.066, 1.258]}, ('O', 'S'): {2: [1.405, 1.5]}, ('C', 'H'): {1: [0.931, 1.14]}, ('N', 'H'): {1: [0.836, 1.09]}, ('S', 'H'): {1: [1.322, 1.4]}, ('O', 'H'): {1: [0.912, 1.033]}, ('H', 'F'): {1: [0.917, 1.014]}, ('N', 'N'): {1: [1.181, 1.864], 1.5: [1.332, 1.332], 2: [1.139, 1.252], 3: [1.098, 1.133]}, ('S', 'S'): {1: [1.89, 2.155], 2: [1.825, 1.898]}, ('H', 'H') : {1: [0.741, 0.741]}, ('F', 'O'): {1: [1.421, 1.421]}, ('F', 'F'): {1: [1.322, 1.412]}, ('H', 'Cl'): {1: [1.275, 1.321]}, ('O', 'Cl'): {1: [1.641, 1.704], 2: [1.404, 1.414]}, ('Cl', 'Cl'): {1: [1.9879, 1.9879]}, ('N', 'F'): {1: [1.317, 1.512]}}
-    bondDict = {('C', 'C'): {1: [1.37, 1.725], 1.5: [1.37, 1.432], 2: [1.243, 1.382], 3: [1.187, 1.268]}, ('C', 'Br'): {1: [1.789, 1.95]}, ('C', 'Cl'): {1: [1.612, 1.813]}, ('C', 'F'): {1: [1.262, 1.401]}, ('C', 'I'): {1: [1.992, 2.157]}, ('C', 'N'): {1: [1.347, 1.497], 1.5: [1.328, 1.35], 2: [1.207, 1.338], 3: [1.14, 1.177]}, ('C', 'O'): {1: [1.273, 1.459], 2: [1.115, 1.272], 3: [1.128, 1.145]}, ('C', 'P'): {1: [1.858, 1.858], 2: [1.673, 1.673], 3: [1.542, 1.562]}, ('C', 'S'): {1: [1.714, 1.863], 2: [1.553, 1.647], 3: [1.478, 1.535]}, ('C', 'Se'): {1: [1.855, 1.959], 2: [1.676, 1.709]}, ('C', 'Si'): {1: [1.722, 1.848]}, ('O', 'O'): {1: [1.116, 1.516], 2: [1.2, 1.208]}, ('N', 'O'): {1: [1.184, 1.507], 2: [1.066, 1.258]}, ('O', 'S'): {2: [1.405, 1.5]}, ('C', 'H'): {1: [0.931, 1.14]}, ('N', 'H'): {1: [0.836, 1.09]}, ('S', 'H'): {1: [1.322, 1.4]}, ('O', 'H'): {1: [0.912, 1.033]}, ('H', 'F'): {1: [0.917, 1.014]}, ('N', 'N'): {1: [1.181, 2.236], 1.5: [1.332, 1.332], 2: [1.139, 1.252], 3: [1.098, 1.133]}, ('S', 'S'): {1: [1.89, 2.155], 2: [1.825, 1.898]}, ('H', 'H') : {1: [0.741, 0.741]}, ('F', 'O'): {1: [1.421, 1.421]}, ('F', 'F'): {1: [1.322, 1.412]}, ('H', 'Cl'): {1: [1.275, 1.321]}, ('O', 'Cl'): {1: [1.641, 1.704], 2: [1.404, 1.414]}, ('Cl', 'Cl'): {1: [1.9879, 1.9879]}, ('N', 'F'): {1: [1.317, 1.512]}, ('N', 'S'): {1: [1.440, 1.719], 3: [1.448, 1.448]}}
+    bondDict = {('C', 'C'): {1: [1.37, 1.725], 1.5: [1.37, 1.432], 2: [1.243, 1.382], 3: [1.187, 1.268]}, ('C', 'Br'): {1: [1.789, 1.95]}, ('C', 'Cl'): {1: [1.612, 1.813]}, ('C', 'F'): {1: [1.262, 1.401]}, ('C', 'I'): {1: [1.992, 2.157]}, ('C', 'N'): {1: [1.347, 1.508], 1.5: [1.328, 1.350], 2: [1.207, 1.332], 3: [1.14, 1.177]}, ('C', 'O'): {1: [1.273, 1.459], 2: [1.146, 1.272], 3: [1.128, 1.145]}, ('C', 'P'): {1: [1.858, 1.858], 2: [1.673, 1.673], 3: [1.542, 1.562]}, ('C', 'S'): {1: [1.714, 1.863], 2: [1.553, 1.647], 3: [1.478, 1.535]}, ('C', 'Se'): {1: [1.855, 1.959], 2: [1.676, 1.709]}, ('C', 'Si'): {1: [1.722, 1.848]}, ('O', 'O'): {1: [1.116, 1.516], 2: [1.2, 1.208]}, ('N', 'O'): {1: [1.184, 1.507], 2: [1.066, 1.258]}, ('O', 'S'): {2: [1.405, 1.5]}, ('C', 'H'): {1: [0.931, 1.20]}, ('N', 'H'): {1: [0.836, 1.20]}, ('S', 'H'): {1: [1.322, 1.4]}, ('O', 'H'): {1: [0.912, 1.033]}, ('H', 'F'): {1: [0.917, 1.014]}, ('N', 'N'): {1: [1.181, 1.864], 1.5: [1.332, 1.332], 2: [1.139, 1.252], 3: [1.098, 1.133]}, ('S', 'S'): {1: [1.89, 2.155], 2: [1.825, 1.898]}, ('H', 'H') : {1: [0.741, 0.741]}, ('F', 'O'): {1: [1.421, 1.421]}, ('F', 'F'): {1: [1.322, 1.412]}, ('H', 'Cl'): {1: [1.275, 1.321]}, ('O', 'Cl'): {1: [1.641, 1.704], 2: [1.404, 1.414]}, ('Cl', 'Cl'): {1: [1.9879, 1.9879]}, ('N', 'F'): {1: [1.317, 1.512]}, ('N', 'S'): {1: [1.440, 1.719], 3: [1.448, 1.448]}}
 
     if (atom1, atom2) or (atom2, atom1) in bondDict:
         try:
@@ -174,17 +174,19 @@ def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for vo
     pairVol = 0 
     # print(proxMatrix)
     for pair in pairList:
-        atom1 = graph.nodes[pair[0]]['element']
-        atom2 = graph.nodes[pair[1]]['element']
+        node1, node2 = pair[0], pair[1]
+        if graph.has_edge(node1, node2):
+            atom1 = graph.nodes[pair[0]]['element']
+            atom2 = graph.nodes[pair[1]]['element']
 
-        sortedPair = sorted(pair)
-        dist = proxMatrix[sortedPair[1]-1, sortedPair[0]-1] # requires sorting because only the lower triangular elements in the proximity matrix are populated
+            sortedPair = sorted(pair)
+            dist = proxMatrix[sortedPair[1]-1, sortedPair[0]-1] # requires sorting because only the lower triangular elements in the proximity matrix are populated
 
-        alpha1 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * get_radii(atom1)**3), 2/3) # these are the decay factors
-        alpha2 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * get_radii(atom2)**3), 2/3) # 2√2 is taken to be the amplitude of the Gaussian
+            alpha1 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * get_radii(atom1)**3), 2/3) # these are the decay factors
+            alpha2 = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * get_radii(atom2)**3), 2/3) # 2√2 is taken to be the amplitude of the Gaussian
 
-        incVol = 8 * math.exp( -1 * (alpha1 * alpha2 * dist**2)/(alpha1 + alpha2)) * pow(math.pi/(alpha1 + alpha2), 3/2) # incremental volume
-        pairVol = pairVol + (2 * incVol) # multiply by 2 because there are two possibiltiies e.g. AB and BA
+            incVol = 8 * math.exp( -1 * (alpha1 * alpha2 * dist**2)/(alpha1 + alpha2)) * pow(math.pi/(alpha1 + alpha2), 3/2) # incremental volume
+            pairVol = pairVol + (1 * incVol) # multiply by 2 because there are two possibiltiies e.g. AB and BA
     
     # del incVol # resetting variable
 
@@ -195,12 +197,13 @@ def get_volume(graph, proxMatrix): # uses atom centred Gaussian functions for vo
     for item in nodeCount:
         atom = item[0]
         count = item[1]
-        alpha = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * get_radii(atom)**3), 2/3)
+        # alpha = math.pi * pow((3 * 2 * math.sqrt(2))/(4 * math.pi * get_radii(atom)**3), 2/3)
 
-        incVol = 8 * pow(math.pi/(2 * alpha), 3/2)
+        # incVol = 8 * pow(math.pi/(2 * alpha), 3/2)
+        incVol = 4/3 * math.pi * get_radii(atom)**3
         sameVol = sameVol + (count * incVol)
     
-    volume = pairVol + sameVol
+    volume = - pairVol + sameVol
 
     return volume
 
