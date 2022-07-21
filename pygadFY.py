@@ -1215,6 +1215,8 @@ class GA:
         max_val_idx = numpy.argmax(self.last_generation_fitness )
         self.best_pos = numpy.array(self.population[max_val_idx])
         self.sum_edges = numpy.sum(self.population[max_val_idx])
+
+        count = 1
         # print('last_generation_fitness', self.last_generation_fitness)
         # print('len of edge_dij', len(edge_dij))
         # print('len of fedges_idx', len(fedges_idx))
@@ -1323,15 +1325,18 @@ class GA:
             self.last_generation_fitness, edge_dij1, fedges_idx = self.cal_pop_fitness()
             max_value = numpy.max(self.last_generation_fitness)
             max_val_idx = numpy.argmax(self.last_generation_fitness)
+            count += 1
             if max_value > self.best_fitness:
                 self.best_fitness = max_value
                 self.best_pos = numpy.array(self.population[max_val_idx])
                 self.sum_edges = numpy.sum(self.population[max_val_idx])
+                count = 1
             
             if max_value == self.best_fitness and numpy.sum(self.population[max_val_idx]) > self.sum_edges:
                 self.best_fitness = max_value
                 self.best_pos = numpy.array(self.population[max_val_idx])
                 self.sum_edges = numpy.sum(self.population[max_val_idx])
+                count = 1
 
             best_cost = self.best_fitness
             rep.hook({'best_cost': '{:.4f}'.format(best_cost)})
@@ -1380,6 +1385,9 @@ class GA:
                             if (self.best_solutions_fitness[self.generations_completed - criterion[1]] - self.best_solutions_fitness[self.generations_completed - 1]) == 0:
                                 stop_run = True
                                 break
+            if count == 100:
+                stop_run = True
+
 
             if stop_run:
                 break
